@@ -30,6 +30,7 @@ endif()
 
 # Указание источников
 set(OCTET_SOURCES
+    src/storage/uuid_generator.cpp
     # TODO
 )
 
