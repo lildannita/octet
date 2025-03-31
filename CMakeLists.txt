@@ -23,6 +23,13 @@ option(OCTET_BUILD_STATIC_LIB "Build static version of the library" OFF)
 option(OCTET_BUILD_APP "Build CLI executable" ON)
 option(OCTET_BUILD_TESTS "Build tests" OFF)
 
+# Если включены тесты — обязательно собираем и статическую, и динамическую библиотеки
+if(OCTET_BUILD_TESTS)
+    message(STATUS "OCTET_BUILD_TESTS is ON: enabling both static and shared library builds for testing purposes.")
+    set(OCTET_BUILD_STATIC_LIB ON CACHE BOOL "Force static lib for testing" FORCE)
+    set(OCTET_BUILD_SHARED_LIB ON CACHE BOOL "Force shared lib for testing" FORCE)
+endif()
+
 # Хотя бы одна версия библиотеки должна быть выбрана
 if(NOT (OCTET_BUILD_SHARED_LIB OR OCTET_BUILD_STATIC_LIB))
     message(FATAL_ERROR "At least one of BUILD_STATIC_LIB or BUILD_SHARED_LIB must be ON.")
@@ -76,33 +83,28 @@ if(OCTET_BUILD_APP)
     endif()
 endif()
 
-# Создание тестов
+# Добавление тестов
 if(OCTET_BUILD_TESTS)
-    enable_testing()
     add_subdirectory(tests)
 endif()
 
 # Настройка установки
 include(CMakePackageConfigHelpers)
 
+function(octet_install_library target)
+    install(TARGETS ${target} EXPORT octet-targets
+                              LIBRARY DESTINATION lib
+                              ARCHIVE DESTINATION lib
+                              RUNTIME DESTINATION bin
+                              INCLUDES DESTINATION include)
+endfunction()
+
 if(OCTET_BUILD_SHARED_LIB)
-    install(TARGETS octet_shared
-        EXPORT octet-targets
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        RUNTIME DESTINATION bin
-        INCLUDES DESTINATION include
-    )
+    octet_install_library(octet_shared)
 endif()
 
 if(OCTET_BUILD_STATIC_LIB)
-    install(TARGETS octet_static
-        EXPORT octet-targets
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        RUNTIME DESTINATION bin
-        INCLUDES DESTINATION include
-    )
+    octet_install_library(octet_static)
 endif()
 
 # Копируем все заголовочные файлы в директорию сборки
