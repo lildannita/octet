@@ -68,9 +68,9 @@ std::string UuidGenerator::generateUuid()
 
 bool UuidGenerator::isValidUuid(const std::string &uuid)
 {
-    // Проверка формата UUID
+    // Регулярное выражение для проверки (регистр всех символов должен быть нижним)
     static const std::regex uuidRegex(
-        "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", std::regex::icase);
+        R"(^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$)");
 
     return std::regex_match(uuid, uuidRegex);
 }
