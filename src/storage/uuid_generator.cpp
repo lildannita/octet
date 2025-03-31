@@ -6,25 +6,22 @@
 #include <regex>
 
 namespace {
-uint64_t getCurrentTimestamp()
+// Получение текущего времени в виде количества тиков (единиц времени) с начала эпохи
+uint64_t getCurrentTimestampInTicks()
 {
     return std::chrono::high_resolution_clock::now().time_since_epoch().count();
 }
 } // namespace
 
-namespace octet::storage {
+namespace octet {
 UuidGenerator::UuidGenerator()
     : counter(0)
 {
     // Инициализация генератора случайных чисел
-    rng.seed(getCurrentTimestamp());
+    rng.seed(getCurrentTimestampInTicks());
 }
 
 /**
- * Генерация идентификатора является гибридной и основана на версии UUID v4,
- * однако не соответствует ей полностью, так как используются не только случайные
- * значения.
- *
  * Правила генерации: [xxxxxxxx-yyyy-Mzzz-Nfff-dddddddddddd]
  *  - [xxxxxxxx] (8) — младшие 32 бита временной метки
  *  - [yyyy] (4) — старшие 16 бит временной метки
@@ -39,7 +36,7 @@ UuidGenerator::UuidGenerator()
 std::string UuidGenerator::generateUuid()
 {
     // Получение текущего времени с высоким разрешением
-    auto timestamp = getCurrentTimestamp();
+    auto timestamp = getCurrentTimestampInTicks();
 
     // Генерация случайного компонента
     auto random = rng();
@@ -77,4 +74,4 @@ bool UuidGenerator::isValidUuid(const std::string &uuid)
 
     return std::regex_match(uuid, uuidRegex);
 }
-} // namespace octet::storage
+} // namespace octet
