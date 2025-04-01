@@ -23,6 +23,17 @@ option(OCTET_BUILD_STATIC_LIB "Build static version of the library" OFF)
 option(OCTET_BUILD_APP "Build CLI executable" ON)
 option(OCTET_BUILD_TESTS "Build tests" OFF)
 
+# Определение платформы
+if(WIN32)
+    add_compile_definitions(OCTET_PLATFORM_WINDOWS)
+elseif(APPLE)
+    add_compile_definitions(OCTET_PLATFORM_MACOS OCTET_PLATFORM_UNIX)
+elseif(UNIX)
+    add_compile_definitions(OCTET_PLATFORM_LINUX OCTET_PLATFORM_UNIX)
+else()
+    message(FATAL_ERROR "Unsupported platform")
+endif()
+
 # Если включены тесты — обязательно собираем и статическую, и динамическую библиотеки
 if(OCTET_BUILD_TESTS)
     message(STATUS "OCTET_BUILD_TESTS is ON: enabling both static and shared library builds for testing purposes.")
@@ -38,6 +49,7 @@ endif()
 # Указание источников
 set(OCTET_SOURCES
     src/storage/uuid_generator.cpp
+    src/utils/logger.cpp
     # TODO
 )
 

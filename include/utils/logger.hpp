@@ -1,0 +1,198 @@
+#pragma once
+
+#include <string>
+#include <string_view>
+#include <sstream>
+#include <filesystem>
+#include <optional>
+#include <mutex>
+
+namespace octet::utils {
+
+/**
+ * @enum LogLevel
+ * @brief Уровни логирования, определяющие важность сообщения
+ */
+enum class LogLevel {
+    TRACE, ///< Детальная трассировка для отладки
+    DEBUG, ///< Отладочные сообщения
+    INFO, ///< Информационные сообщения
+    WARNING, ///< Предупреждения, не являющиеся ошибками
+    ERROR, ///< Ошибки, не прерывающие работу программы
+    CRITICAL ///< Критические ошибки, прерывающие работу программы
+};
+
+/**
+ * @class Logger
+ * @brief Управляет логированием сообщений с различными уровнями важности
+ *
+ * Logger является синглтоном и обеспечивает потокобезопасное логирование.
+ * По умолчанию логирование отключено и должно быть явно включено пользователем.
+ */
+class Logger {
+public:
+    /**
+     * @brief Получение единственного экземпляра логгера
+     * @return Ссылка на экземпляр логгера
+     */
+    static Logger &getInstance();
+
+    /**
+     * @brief Включает логирование
+     * @param logToConsole Включить вывод в консоль
+     * @param logFile Путь к файлу для логирования (опционально)
+     * @param minLevel Минимальный уровень сообщений для логирования
+     * @param useColors Использовать цветной вывод в консоли (если поддерживается)
+     */
+    void enable(bool logToConsole = true,
+                std::optional<std::filesystem::path> logFile = std::nullopt,
+                LogLevel minLevel = LogLevel::INFO, bool useColors = true);
+
+    /**
+     * @brief Отключает логирование
+     */
+    void disable();
+
+    /**
+     * @brief Проверяет, включено ли логирование
+     * @return true, если логирование включено
+     */
+    bool isEnabled() const;
+
+    /**
+     * @brief Установка минимального уровня логирования
+     * @param level Минимальный уровень сообщений
+     */
+    void setMinLogLevel(LogLevel level);
+
+    /**
+     * @brief Получение текущего минимального уровня логирования
+     * @return Текущий минимальный уровень
+     */
+    LogLevel getMinLogLevel() const;
+
+    /**
+     * @brief Включение или отключение цветного вывода в консоль
+     * @param useColors true для использования цветного вывода, false для обычного текста
+     */
+    void setUseColors(bool useColors);
+
+    /**
+     * @brief Проверка, используется ли цветной вывод в консоль
+     * @return true, если цветной вывод включен
+     */
+    bool getUseColors() const;
+
+    /**
+     * @brief Логирование сообщения с указанным уровнем
+     * @param level Уровень сообщения
+     * @param message Текст сообщения
+     * @param file Имя файла, из которого вызвана функция логирования
+     * @param line Номер строки, из которой вызвана функция логирования
+     */
+    void log(LogLevel level, const std::string &message, const std::string_view file = {},
+             int line = 0);
+
+private:
+    // Запрещаем создание экземпляров класса напрямую
+    Logger();
+    ~Logger();
+    Logger(const Logger &) = delete;
+    Logger &operator=(const Logger &) = delete;
+    Logger(Logger &&) = delete;
+    Logger &operator=(Logger &&) = delete;
+
+    // Состояние логгера
+    bool enabled; // Включено ли логирование
+    bool consoleOutput; // Вывод в консоль
+    bool colorOutput; // Использовать цветной вывод
+    std::optional<std::filesystem::path> logFilePath; // Путь к файлу лога
+    LogLevel minimumLevel; // Минимальный уровень логирования
+    std::mutex logMutex; // Мьютекс для потокобезопасности
+
+    /**
+     * @brief Преобразует уровень логирования в строку
+     * @param level Уровень логирования
+     * @return Текстовое представление уровня
+     */
+    static std::string levelToString(LogLevel level);
+
+    /**
+     * @brief Форматирует сообщение для вывода в лог
+     * @param level Уровень сообщения
+     * @param message Текст сообщения
+     * @param file Имя файла
+     * @param line Номер строки
+     * @return Отформатированное сообщение
+     */
+    std::string formatLogMessage(LogLevel level, const std::string &message,
+                                 const std::string_view file, int line) const;
+
+    /**
+     * @brief Записывает сообщение в файл лога
+     * @param formattedMessage Отформатированное сообщение
+     * @return true, если запись выполнена успешно
+     */
+    bool writeToFile(const std::string &formattedMessage);
+
+    /**
+     * @brief Выводит сообщение в консоль
+     * @param formattedMessage Отформатированное сообщение
+     * @param level Уровень сообщения (для цветового выделения)
+     */
+    void writeToConsole(const std::string &formattedMessage, LogLevel level);
+
+    /**
+     * @brief Проверяет, поддерживает ли консоль ANSI цвета
+     * @return true, если консоль поддерживает ANSI цвета
+     */
+    bool isColorSupportedByTerminal() const;
+};
+
+/**
+ * @brief Вспомогательный класс для логирования с использованием потокового синтаксиса
+ */
+class LogStream {
+public:
+    /**
+     * @brief Создает поток логирования для указанного уровня
+     * @param level Уровень логирования
+     * @param file Имя файла, из которого произведен вызов
+     * @param line Номер строки
+     */
+    LogStream(LogLevel level, const std::string_view file, int line);
+
+    /**
+     * @brief Деструктор, который отправляет собранное сообщение в логгер
+     */
+    ~LogStream();
+
+    /**
+     * @brief Оператор перенаправления для потокового формирования сообщения
+     * @param val Значение для добавления в сообщение
+     * @return Ссылка на текущий поток
+     */
+    template <typename T> LogStream &operator<<(const T &val)
+    {
+        if (Logger::getInstance().isEnabled() && level >= Logger::getInstance().getMinLogLevel()) {
+            stream << val;
+        }
+        return *this;
+    }
+
+private:
+    LogLevel level; // Уровень логирования
+    std::ostringstream stream; // Поток для формирования сообщения
+    std::string_view file; // Имя файла
+    int line; // Номер строки
+};
+
+} // namespace octet::utils
+
+// Макросы для удобного логирования с автоматическим указанием файла и строки
+#define LOG_TRACE octet::utils::LogStream(octet::utils::LogLevel::TRACE, __FILE__, __LINE__)
+#define LOG_DEBUG octet::utils::LogStream(octet::utils::LogLevel::DEBUG, __FILE__, __LINE__)
+#define LOG_INFO octet::utils::LogStream(octet::utils::LogLevel::INFO, __FILE__, __LINE__)
+#define LOG_WARNING octet::utils::LogStream(octet::utils::LogLevel::WARNING, __FILE__, __LINE__)
+#define LOG_ERROR octet::utils::LogStream(octet::utils::LogLevel::ERROR, __FILE__, __LINE__)
+#define LOG_CRITICAL octet::utils::LogStream(octet::utils::LogLevel::CRITICAL, __FILE__, __LINE__)
