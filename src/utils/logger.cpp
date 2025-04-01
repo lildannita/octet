@@ -27,6 +27,12 @@ std::string getCurrentTimeFormatted()
     oss << std::put_time(std::localtime(&time_t_now), "%Y-%m-%d %H:%M:%S") << '.'
         << std::setfill('0') << std::setw(3) << ms.count();
     return oss.str();
+
+    char buffer[32];
+    std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", std::localtime(&time_t_now));
+    std::string result(buffer);
+    result += "." + std::to_string(ms.count());
+    return result;
 }
 
 /**
