@@ -24,12 +24,16 @@ option(OCTET_BUILD_APP "Build CLI executable" ON)
 option(OCTET_BUILD_TESTS "Build tests" OFF)
 
 # Определение платформы
+add_library(octet_platform INTERFACE)
 if(WIN32)
-    add_compile_definitions(OCTET_PLATFORM_WINDOWS)
+    message(STATUS "Platform: Windows")
+    target_compile_definitions(octet_platform INTERFACE OCTET_PLATFORM_WINDOWS OCTET_PLATFORM_SUPPORTED)
 elseif(APPLE)
-    add_compile_definitions(OCTET_PLATFORM_MACOS OCTET_PLATFORM_UNIX)
+    message(STATUS "Platform: macOS")
+    target_compile_definitions(octet_platform INTERFACE OCTET_PLATFORM_MACOS OCTET_PLATFORM_UNIX OCTET_PLATFORM_SUPPORTED)
 elseif(UNIX)
-    add_compile_definitions(OCTET_PLATFORM_LINUX OCTET_PLATFORM_UNIX)
+    message(STATUS "Platform: Linux")
+    target_compile_definitions(octet_platform INTERFACE OCTET_PLATFORM_LINUX OCTET_PLATFORM_UNIX OCTET_PLATFORM_SUPPORTED)
 else()
     message(FATAL_ERROR "Unsupported platform")
 endif()
@@ -65,7 +69,8 @@ add_library(${libname} ${type} ${OCTET_SOURCES})
                                                 # Настройки для, в основном, Debug-сборки
                                                 LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib
                                                 ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
-    target_link_libraries(${libname} PRIVATE Boost::system)
+    target_link_libraries(${libname} PRIVATE octet_platform
+                                             Boost::system)
     target_include_directories(${libname} PRIVATE ${OCTET_INCLUDE_DIR})
 endfunction(add_octet_library)
 
@@ -104,7 +109,7 @@ endif()
 include(CMakePackageConfigHelpers)
 
 function(octet_install_library target)
-    install(TARGETS ${target} EXPORT octet-targets
+    install(TARGETS ${target} EXPORT octet_targets
                               LIBRARY DESTINATION lib
                               ARCHIVE DESTINATION lib
                               RUNTIME DESTINATION bin
@@ -119,11 +124,14 @@ if(OCTET_BUILD_STATIC_LIB)
     octet_install_library(octet_static)
 endif()
 
+# Добавляем платформенную библиотеку в экспортируемый набор
+install(TARGETS octet_platform EXPORT octet_targets)
+
 # Копируем все заголовочные файлы в директорию сборки
 install(DIRECTORY include/ DESTINATION include)
 
 # Установка экспортируемых таргетов
-install(EXPORT octet-targets
+install(EXPORT octet_targets
     FILE octetTargets.cmake
     NAMESPACE octet::
     DESTINATION lib/cmake/octet
