@@ -54,6 +54,7 @@ endif()
 set(OCTET_SOURCES
     src/storage/uuid_generator.cpp
     src/utils/file_utils.cpp
+    src/utils/lock_guard.cpp
     src/utils/logger.cpp
     # TODO
 )
