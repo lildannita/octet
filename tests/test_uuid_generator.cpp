@@ -17,7 +17,7 @@ protected:
 // Проверка общего формата и структуры UUID
 TEST_F(UuidGeneratorTest, UuidTestFormatting)
 {
-    for (size_t i = 0; i < 100000; ++i) {
+    for (size_t i = 0; i < 100000; i++) {
         const auto uuid = generator.generateUuid();
 
         EXPECT_TRUE(generator.isValidUuid(uuid));
@@ -49,7 +49,7 @@ TEST_F(UuidGeneratorTest, UuidTestUniqueness)
     constexpr size_t UUID_COUNT = 100000;
     std::unordered_set<std::string> uuids;
 
-    for (size_t i = 0; i < UUID_COUNT; ++i) {
+    for (size_t i = 0; i < UUID_COUNT; i++) {
         auto uuid = generator.generateUuid();
         // Проверка правильности UUID
         EXPECT_TRUE(generator.isValidUuid(uuid));
@@ -71,7 +71,7 @@ TEST_F(UuidGeneratorTest, UuidTestConcurrentGeneration)
 
     auto generateTask = [this, &uuids, &uuidsMutex]() {
         std::vector<std::string> localUuids;
-        for (size_t i = 0; i < UUID_PER_THREAD; ++i) {
+        for (size_t i = 0; i < UUID_PER_THREAD; i++) {
             auto uuid = generator.generateUuid();
             // Проверка правильности UUID
             EXPECT_TRUE(generator.isValidUuid(uuid));
@@ -86,7 +86,7 @@ TEST_F(UuidGeneratorTest, UuidTestConcurrentGeneration)
     };
 
     std::vector<std::future<void>> futures;
-    for (size_t i = 0; i < THREAD_COUNT; ++i) {
+    for (size_t i = 0; i < THREAD_COUNT; i++) {
         futures.push_back(std::async(std::launch::async, generateTask));
     }
 
