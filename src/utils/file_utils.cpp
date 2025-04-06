@@ -23,6 +23,7 @@
 
 #include "utils/compiler.hpp"
 
+namespace {
 // Глобальные контейнеры для хранения активных дескрипторов по lock-файлам
 #if defined(OCTET_PLATFORM_UNIX)
 static std::unordered_map<std::string, int> fileLockMap;
@@ -32,7 +33,6 @@ static std::unordered_map<std::string, HANDLE> fileLockMap;
 // Мьютекс для безопасного доступа к контейнерам из нескольких потоков
 static std::mutex fileLockMutex;
 
-namespace {
 // Получение текущего времени в виде строки для создания уникальных имен файлов
 std::string getCurrentTimeFormatted()
 {
@@ -62,7 +62,7 @@ std::string generateRandomId(size_t length = 8)
     std::uniform_int_distribution<size_t> dist(0, sizeof(characters) - 2);
 
     std::string result(length, '\0');
-    for (size_t i = 0; i < length; ++i) {
+    for (size_t i = 0; i < length; i++) {
         result[i] = characters[dist(rng)];
     }
     return result;
@@ -111,14 +111,14 @@ bool syncDirectory(const std::filesystem::path &dir)
     // работа с каталогами, тем более учитывая, что нужно сделать "нестандартную" операцию -
     // синхронизацию директории
 #if defined(OCTET_PLATFORM_UNIX)
-    int fd = open(dir.c_str(), O_RDONLY);
+    const auto fd = open(dir.c_str(), O_RDONLY);
     if (fd == -1) {
         LOG_ERROR << "Не удалось открыть директорию для синхронизации: " << dir.string()
                   << ", ошибка: " << strerror(errno);
         return false;
     }
 
-    int result = fsync(fd);
+    const auto result = fsync(fd);
     close(fd);
     if (result != 0) {
         LOG_ERROR << "Ошибка синхронизации директории: " << dir.string()
@@ -402,6 +402,11 @@ bool isFileReadable(const std::filesystem::path &filePath)
         return false;
     }
 
+    if (std::filesystem::is_directory(filePath)) {
+        LOG_DEBUG << "По указанному пути находится директория, а не файл: " << filePath.string();
+        return false;
+    }
+
     // Пытаемся открыть файл для чтения, чтобы убедиться в доступности
     std::ifstream testFile(filePath);
     bool readable = testFile.good();
@@ -524,7 +529,7 @@ bool acquireFileLock(const std::filesystem::path &lockFilePath)
 
 #if defined(OCTET_PLATFORM_UNIX)
     // Открываем (или создаём, если не существует) файл блокировки с правами чтения/записи
-    int fd = open(lockFilePath.c_str(), O_RDWR | O_CREAT, 0666);
+    const auto fd = open(lockFilePath.c_str(), O_RDWR | O_CREAT, 0666);
     if (fd == -1) {
         LOG_ERROR << "Не удалось открыть файл блокировки: " << lockFilePath.string()
                   << ", ошибка: " << strerror(errno);
@@ -612,7 +617,7 @@ bool releaseFileLock(const std::filesystem::path &lockFilePath)
 
 #if defined(OCTET_PLATFORM_UNIX)
     // Получаем дескриптор для данного lock-файла
-    int fd = it->second;
+    const auto fd = it->second;
     // Снимаем блокировку
     if (flock(fd, LOCK_UN) != 0) {
         LOG_ERROR << "Ошибка при снятии блокировки: " << lockFilePath.string()
