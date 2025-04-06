@@ -8,6 +8,11 @@
 #include <mutex>
 
 namespace octet::utils {
+/**
+ * @brief Потокобезопасное преобразование кода ошибки в строковое описание
+ * @return Строковое описание ошибки
+ */
+extern std::string errnoToString(int errnum);
 
 /**
  * @enum LogLevel

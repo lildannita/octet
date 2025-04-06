@@ -1,11 +1,18 @@
 #include "utils/logger.hpp"
 
+#include <cstring>
 #include <iostream>
 #include <fstream>
 #include <chrono>
 #include <iomanip>
 #include <sstream>
 #include <filesystem>
+
+#if defined(OCTET_PLATFORM_WINDOWS)
+#include <errno.h>
+#elif defined(OCTET_PLATFORM_UNIX)
+#include <cerrno>
+#endif
 
 #include "utils/compiler.hpp"
 
@@ -65,6 +72,34 @@ constexpr const char *CYAN = "\033[36m"; // Голубой (для трасси�
 } // namespace ConsoleColor
 
 namespace octet::utils {
+std::string errnoToString(int errnum)
+{
+    char buffer[128] = { 0 };
+#if defined(OCTET_PLATFORM_WINDOWS)
+    if (strerror_s(buffer, sizeof(buffer), errnum) == 0) {
+        return std::string(buffer);
+    }
+    else {
+        return "Unknown error";
+    }
+#elif defined(OCTET_PLATFORM_UNIX)
+#if defined(__GLIBC__) && defined(_GNU_SOURCE)
+    // GNU-версия strerror_r возвращает char*
+    return std::string(strerror_r(errnum, buffer, sizeof(buffer)));
+#else
+    // XSI-совместимая версия strerror_r возвращает int
+    if (strerror_r(errnum, buffer, sizeof(buffer)) == 0) {
+        return std::string(buffer);
+    }
+    else {
+        return "Unknown error";
+    }
+#endif
+#else
+    UNREACHABLE("Unsupported platform");
+#endif
+}
+
 Logger &Logger::getInstance()
 {
     // Реализация синглтона Logger
