@@ -12,7 +12,10 @@ endif()
 
 # Указание источников
 set(OCTET_TEST_SOURCES
+    test_file_lock_guard.cpp
     test_uuid_generator.cpp
+    testing_utils.hpp
+    testing_utils.cpp
     # TODO
 )
 
@@ -32,6 +35,7 @@ add_executable(octet_unit_tests_static ${OCTET_TEST_SOURCES})
 set_target_properties(octet_unit_tests_static PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OCTET_TESTS_OUTPUT_DIR})
 target_include_directories(octet_unit_tests_static PRIVATE ${OCTET_TESTS_INCLUDE_DIR})
 target_link_libraries(octet_unit_tests_static PRIVATE octet_static
+                                                      octet_platform
                                                       ${OCTET_TEST_DEPENDENCIES})
 
 # Создание исполняемого файла для тестирования со *динамической* библиотекой
@@ -39,6 +43,7 @@ add_executable(octet_unit_tests_shared ${OCTET_TEST_SOURCES})
 set_target_properties(octet_unit_tests_shared PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OCTET_TESTS_OUTPUT_DIR})
 target_include_directories(octet_unit_tests_shared PRIVATE ${OCTET_TESTS_INCLUDE_DIR})
 target_link_libraries(octet_unit_tests_shared PRIVATE octet_shared
+                                                      octet_platform
                                                       ${OCTET_TEST_DEPENDENCIES})
 
 # Настройка покрытия
