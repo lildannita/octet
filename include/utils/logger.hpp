@@ -108,12 +108,12 @@ private:
     Logger &operator=(Logger &&) = delete;
 
     // Состояние логгера
-    bool enabled; // Включено ли логирование
-    bool consoleOutput; // Вывод в консоль
-    bool colorOutput; // Использовать цветной вывод
-    std::optional<std::filesystem::path> logFilePath; // Путь к файлу лога
-    LogLevel minimumLevel; // Минимальный уровень логирования
-    std::mutex logMutex; // Мьютекс для потокобезопасности
+    bool enabled_; // Включено ли логирование
+    bool consoleOutput_; // Вывод в консоль
+    bool colorOutput_; // Использовать цветной вывод
+    std::optional<std::filesystem::path> logFilePath_; // Путь к файлу лога
+    LogLevel minimumLevel_; // Минимальный уровень логирования
+    std::mutex logMutex_; // Мьютекс для потокобезопасности
 
     /**
      * @brief Преобразует уровень логирования в строку
@@ -179,17 +179,17 @@ public:
      */
     template <typename T> LogStream &operator<<(const T &val)
     {
-        if (Logger::getInstance().isEnabled() && level >= Logger::getInstance().getMinLogLevel()) {
-            stream << val;
+        if (Logger::getInstance().isEnabled() && level_ >= Logger::getInstance().getMinLogLevel()) {
+            stream_ << val;
         }
         return *this;
     }
 
 private:
-    LogLevel level; // Уровень логирования
-    std::ostringstream stream; // Поток для формирования сообщения
-    std::string_view file; // Имя файла
-    int line; // Номер строки
+    LogLevel level_; // Уровень логирования
+    std::ostringstream stream_; // Поток для формирования сообщения
+    std::string_view file_; // Имя файла
+    int line_; // Номер строки
 };
 
 } // namespace octet::utils

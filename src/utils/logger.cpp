@@ -108,11 +108,11 @@ Logger &Logger::getInstance()
 }
 
 Logger::Logger()
-    : enabled(false)
-    , consoleOutput(false)
-    , colorOutput(false)
-    , logFilePath(std::nullopt)
-    , minimumLevel(LogLevel::INFO)
+    : enabled_(false)
+    , consoleOutput_(false)
+    , colorOutput_(false)
+    , logFilePath_(std::nullopt)
+    , minimumLevel_(LogLevel::INFO)
 {
 }
 
@@ -123,68 +123,72 @@ Logger::~Logger()
 void Logger::enable(bool logToConsole, std::optional<std::filesystem::path> logFile,
                     LogLevel minLevel, bool useColors)
 {
-    std::lock_guard<std::mutex> lock(logMutex);
+    std::ostringstream configMsg;
+    bool needColorWarning = false;
 
-    enabled = true;
-    consoleOutput = logToConsole;
-    logFilePath = logFile;
-    minimumLevel = minLevel;
+    {
+        std::lock_guard<std::mutex> lock(logMutex_);
 
-    // Устанавливаем использование цветов, если это запрошено и поддерживается
-    if (useColors) {
-        const auto isColorSupported = isColorSupportedByTerminal();
-        if (!isColorSupported) {
-            log(LogLevel::WARNING,
-                "Включена поддержка цветного вывода, однако текущая консоль не поддерживает ANSI "
-                "цвета",
-                __FILE__, __LINE__);
+        enabled_ = true;
+        consoleOutput_ = logToConsole;
+        logFilePath_ = logFile;
+        minimumLevel_ = minLevel;
+
+        // Устанавливаем использование цветов, если это запрошено и поддерживается
+        if (useColors) {
+            const auto isColorSupported = isColorSupportedByTerminal();
+            needColorWarning = !isColorSupported;
+            colorOutput_ = useColors && isColorSupported;
         }
-        colorOutput = useColors && isColorSupported;
+
+        if (logFilePath_.has_value()) {
+            // Создаем директорию для лог-файла, если она не существует
+            auto dir = logFilePath_->parent_path();
+            if (!dir.empty()) {
+                std::filesystem::create_directories(dir);
+            }
+
+            // Записываем заголовок при инициализации лог-файла
+            std::ofstream file(*logFilePath_, std::ios::out | std::ios::app);
+            if (file) {
+                file << "--- OCTET логирование начато в " << getCurrentTimeFormatted() << " ---"
+                     << std::endl;
+                file.close();
+            }
+        }
+
+        // Формируем сообщение с конфигурацией логгера
+        configMsg << "Логирование включено (минимальный уровень: " << levelToString(minimumLevel_)
+                  << ", вывод в консоль: " << (consoleOutput_ ? "да" : "нет")
+                  << ", цветной вывод: " << (colorOutput_ ? "да" : "нет") << ")";
     }
 
-    if (logFilePath.has_value()) {
-        // Создаем директорию для лог-файла, если она не существует
-        auto dir = logFilePath->parent_path();
-        if (!dir.empty()) {
-            std::filesystem::create_directories(dir);
-        }
-
-        // Записываем заголовок при инициализации лог-файла
-        std::ofstream file(*logFilePath, std::ios::out | std::ios::app);
-        if (file) {
-            file << "--- OCTET логирование начато в " << getCurrentTimeFormatted() << " ---"
-                 << std::endl;
-            file.close();
-        }
+    if (needColorWarning) {
+        log(LogLevel::WARNING,
+            "Включена поддержка цветного вывода, однако текущая консоль не поддерживает ANSI цвета",
+            __FILE__, __LINE__);
     }
-
-    // Логируем информацию о настройках логгера
-    std::ostringstream oss;
-    oss << "Логирование включено (минимальный уровень: " << levelToString(minimumLevel)
-        << ", вывод в консоль: " << (consoleOutput ? "да" : "нет")
-        << ", цветной вывод: " << (colorOutput ? "да" : "нет");
-
-    log(LogLevel::INFO, oss.str(), __FILE__, __LINE__);
+    log(LogLevel::INFO, configMsg.str(), __FILE__, __LINE__);
 }
 
 void Logger::disable()
 {
-    std::lock_guard<std::mutex> lock(logMutex);
+    std::lock_guard<std::mutex> lock(logMutex_);
     log(LogLevel::INFO, "Логирование отключено", __FILE__, __LINE__);
-    enabled = false;
+    enabled_ = false;
 }
 
 bool Logger::isEnabled() const
 {
-    return enabled;
+    return enabled_;
 }
 
 void Logger::setMinLogLevel(LogLevel level)
 {
-    std::lock_guard<std::mutex> lock(logMutex);
-    minimumLevel = level;
+    std::lock_guard<std::mutex> lock(logMutex_);
+    minimumLevel_ = level;
 
-    if (enabled) {
+    if (enabled_) {
         std::ostringstream oss;
         oss << "Минимальный уровень логирования установлен на " << levelToString(level);
         log(LogLevel::INFO, oss.str(), __FILE__, __LINE__);
@@ -193,12 +197,12 @@ void Logger::setMinLogLevel(LogLevel level)
 
 LogLevel Logger::getMinLogLevel() const
 {
-    return minimumLevel;
+    return minimumLevel_;
 }
 
 void Logger::setUseColors(bool useColors)
 {
-    std::lock_guard<std::mutex> lock(logMutex);
+    std::lock_guard<std::mutex> lock(logMutex_);
 
     // Устанавливаем использование цветов, если это запрошено и поддерживается
     const auto isColorSupported = isColorSupportedByTerminal();
@@ -208,37 +212,37 @@ void Logger::setUseColors(bool useColors)
             "цвета",
             __FILE__, __LINE__);
     }
-    colorOutput = useColors && isColorSupported;
+    colorOutput_ = useColors && isColorSupported;
 
     log(LogLevel::INFO,
-        "Использование цветного вывода " + std::string(colorOutput ? "включено" : "отключено"),
+        "Использование цветного вывода " + std::string(colorOutput_ ? "включено" : "отключено"),
         __FILE__, __LINE__);
 }
 
 bool Logger::getUseColors() const
 {
-    return colorOutput;
+    return colorOutput_;
 }
 
 void Logger::log(LogLevel level, const std::string &message, const std::string_view file, int line)
 {
     // Проверяем, включено ли логирование и подходит ли уровень сообщения
-    if (!enabled || level < minimumLevel) {
+    if (!enabled_ || level < minimumLevel_) {
         return;
     }
 
-    std::lock_guard<std::mutex> lock(logMutex);
+    std::lock_guard<std::mutex> lock(logMutex_);
 
     // Форматируем сообщение
     auto formattedMessage = formatLogMessage(level, message, file, line);
 
     // Выводим в консоль, если необходимо
-    if (consoleOutput) {
+    if (consoleOutput_) {
         writeToConsole(formattedMessage, level);
     }
 
     // Записываем в файл, если указан путь
-    if (logFilePath.has_value()) {
+    if (logFilePath_.has_value()) {
         writeToFile(formattedMessage);
     }
 }
@@ -284,14 +288,14 @@ std::string Logger::formatLogMessage(LogLevel level, const std::string &message,
 
 bool Logger::writeToFile(const std::string &formattedMessage)
 {
-    if (!logFilePath.has_value()) {
+    if (!logFilePath_.has_value()) {
         return false;
     }
 
     // Открываем файл в режиме добавления
-    std::ofstream file(*logFilePath, std::ios::out | std::ios::app);
+    std::ofstream file(*logFilePath_, std::ios::out | std::ios::app);
     if (!file) {
-        std::cerr << "OCTET: Не удалось открыть файл для записи: " << *logFilePath << std::endl;
+        std::cerr << "OCTET: Не удалось открыть файл для записи: " << *logFilePath_ << std::endl;
         return false;
     }
 
@@ -306,7 +310,7 @@ void Logger::writeToConsole(const std::string &formattedMessage, LogLevel level)
     const std::string prefix = "OCTET: ";
 
     // Используем цветовой вывод в зависимости от уровня логирования и настроек
-    if (colorOutput) {
+    if (colorOutput_) {
         const char *colorCode = ConsoleColor::RESET;
 
         switch (level) {
@@ -375,9 +379,9 @@ bool Logger::isColorSupportedByTerminal() const
 }
 
 LogStream::LogStream(LogLevel level, const std::string_view file, int line)
-    : level(level)
-    , file(file)
-    , line(line)
+    : level_(level)
+    , file_(file)
+    , line_(line)
 {
 }
 
@@ -385,7 +389,7 @@ LogStream::~LogStream()
 {
     // Отправляем собранное сообщение в логгер при уничтожении объекта
     // Это позволяет использовать потоковый синтаксис для логирования
-    Logger::getInstance().log(level, stream.str(), file, line);
+    Logger::getInstance().log(level_, stream_.str(), file_, line_);
 }
 
 } // namespace octet::utils
