@@ -1,10 +1,12 @@
 #include "utils/file_lock_guard.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <mutex>
 #include <thread>
 #include <unordered_map>
 #include <system_error>
+#include <vector>
 
 #if defined(OCTET_PLATFORM_UNIX)
 #include <unistd.h>
@@ -32,7 +34,7 @@ public:
     LockInfo(FileDescriptor fd, octet::utils::LockMode mode, std::thread::id threadId)
         : fd_(fd)
         , mode_(mode)
-        , threadId_(threadId)
+        , threadIds_({ threadId })
         , refCount_(1)
     {
     }
@@ -46,10 +48,10 @@ public:
     {
         return mode_;
     }
-    // Геттер для идентификатора потока
-    std::thread::id getThreadId() const
+    // Проверка, захвачена ли блокировка вызывающим потоком
+    bool lockedByThread(std::thread::id threadId) const
     {
-        return threadId_;
+        return std::find(threadIds_.begin(), threadIds_.end(), threadId) != threadIds_.end();
     }
     // Геттер для счетчика ссылок
     size_t getRefCount() const
@@ -57,23 +59,32 @@ public:
         return refCount_;
     }
     // Увеличение счетчика ссылок на единицу
-    void incrementRefCount()
+    void incrementRefCount(std::thread::id threadId)
     {
         if (mode_ == octet::utils::LockMode::SHARED) {
             refCount_++;
+            threadIds_.push_back(threadId);
         }
         else {
             UNREACHABLE("Increment function must be called only for SHARED mode");
         }
     }
     // Уменьшение счетчика ссылок на единицу
-    void decrementRefCount()
+    void decrementRefCount(std::thread::id threadId)
     {
         if (refCount_ == 0) {
             UNREACHABLE("Trying to decrease empty reference counter for shared locks");
         }
         else if (mode_ == octet::utils::LockMode::SHARED) {
             refCount_--;
+            // Удаляем первое вхождение идентификатора потока
+            auto it = std::find(threadIds_.begin(), threadIds_.end(), threadId);
+            if (it == threadIds_.end()) {
+                UNREACHABLE("Trying to decrease reference count from unauthorized thread");
+            }
+            else {
+                threadIds_.erase(it);
+            }
         }
         else {
             UNREACHABLE("Decrement function must be called only for SHARED mode");
@@ -83,7 +94,7 @@ public:
 private:
     const FileDescriptor fd_; // Дескриптор lock-файла
     const octet::utils::LockMode mode_; // Режим блокировки
-    const std::thread::id threadId_; // Идентификатор потока
+    std::vector<std::thread::id> threadIds_; // Идентификаторы потоков, захвативших блокировку
     size_t refCount_; // Счетчик ссылок для разделяемых блокировок
 };
 
@@ -211,14 +222,14 @@ bool FileLockGuard::acquireFileLock(const std::filesystem::path &filePath, LockM
 
         // Если оба режима разделяемые, увеличиваем счетчик ссылок
         if (bothShared) {
-            it->second.incrementRefCount();
+            it->second.incrementRefCount(currentThreadId);
             LOG_DEBUG << "Увеличен счетчик ссылок для разделяемой блокировки: " << filePath.string()
                       << ", новое значение: " << it->second.getRefCount();
             return true;
         }
 
         // Если блокировка принадлежит текущему потоку - это самоблокировка
-        if (it->second.getThreadId() == currentThreadId) {
+        if (it->second.lockedByThread(currentThreadId)) {
             LOG_ERROR << "Попытка повторного захвата блокировки в том же потоке: "
                       << filePath.string() << ". Это может привести к deadlock!";
             return false;
@@ -464,7 +475,7 @@ bool FileLockGuard::acquireFileLock(const std::filesystem::path &filePath, LockM
     // Сохраняем информацию о блокировке в глобальном контейнере
     fileLockMap.emplace(lockPathStr, LockInfo(fd, mode, currentThreadId));
 
-    LOG_INFO << "Успешно получена блокировка: " << filePath.string() << "(" << lockPathStr
+    LOG_INFO << "Успешно получена блокировка: " << filePath.string() << " (" << lockPathStr
              << "), режим: " << getLockModeString(mode);
     return true;
 #else
@@ -494,20 +505,21 @@ bool FileLockGuard::releaseFileLock(const std::filesystem::path &filePath)
     // Получаем информацию о блокировке
     auto &info = it->second;
 
+    // Проверяем, что блокировка освобождается тем же потоком, который ее захватил
+    const auto currentThreadId = std::this_thread::get_id();
+    if (!info.lockedByThread(currentThreadId)) {
+        LOG_ERROR << "Попытка освободить блокировку из неидентифицированного потока: "
+                  << lockPathStr;
+        return false;
+    }
+
     // Уменьшаем счетчик ссылок для разделяемых блокировок
     const auto refCount = info.getRefCount();
     if (info.getMode() == LockMode::SHARED && refCount > 1) {
-        info.decrementRefCount();
+        info.decrementRefCount(currentThreadId);
         LOG_DEBUG << "Уменьшен счетчик ссылок для разделяемой блокировки: " << lockPathStr
                   << ", новое значение: " << refCount;
         return true;
-    }
-
-    // Проверяем, что блокировка освобождается тем же потоком, который ее захватил
-    const auto currentThreadId = std::this_thread::get_id();
-    if (info.getThreadId() != currentThreadId) {
-        LOG_ERROR << "Попытка освободить блокировку из другого потока: " << lockPathStr;
-        return false;
     }
 
     // Получаем дескриптор файла
