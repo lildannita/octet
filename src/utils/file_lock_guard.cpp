@@ -222,9 +222,11 @@ bool FileLockGuard::acquireFileLock(const std::filesystem::path &filePath, LockM
 
         // Если оба режима разделяемые, увеличиваем счетчик ссылок
         if (bothShared) {
+            const auto refCount = it->second.getRefCount();
             it->second.incrementRefCount(currentThreadId);
+            const auto newRefCount = it->second.getRefCount();
             LOG_DEBUG << "Увеличен счетчик ссылок для разделяемой блокировки: " << filePath.string()
-                      << ", новое значение: " << it->second.getRefCount();
+                      << ", изменение значения: " << refCount << " -> " << newRefCount;
             return true;
         }
 
@@ -517,8 +519,9 @@ bool FileLockGuard::releaseFileLock(const std::filesystem::path &filePath)
     const auto refCount = info.getRefCount();
     if (info.getMode() == LockMode::SHARED && refCount > 1) {
         info.decrementRefCount(currentThreadId);
+        const auto newRefCount = info.getRefCount();
         LOG_DEBUG << "Уменьшен счетчик ссылок для разделяемой блокировки: " << lockPathStr
-                  << ", новое значение: " << refCount;
+                  << ", изменение значения: " << refCount << " -> " << newRefCount;
         return true;
     }
 
