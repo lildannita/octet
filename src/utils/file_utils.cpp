@@ -25,9 +25,14 @@
 
 namespace {
 // Проверка существовании директории по указанному пути
-bool isExistingDirectory(std::filesystem::path path)
+std::optional<bool> isExistingDirectory(std::filesystem::path path)
 {
-    return std::filesystem::exists(path) && std::filesystem::is_directory(path);
+    try {
+        return std::filesystem::exists(path) && std::filesystem::is_directory(path);
+    }
+    catch (const std::exception &) {
+        return std::nullopt;
+    }
 }
 
 // Получение текущего времени в виде строки для создания уникальных имен файлов
@@ -158,7 +163,7 @@ bool syncDirectory(const std::filesystem::path &dir)
 std::optional<std::filesystem::path> do_createFileBackup(const std::filesystem::path &filePath)
 {
     if (!octet::utils::isFileReadable(filePath)) {
-        LOG_ERROR << "Не удается создать резервную копию: файл не доступен для чтения: "
+        LOG_ERROR << "Не удается создать резервную копию, файл не доступен для чтения: "
                   << filePath.string();
         return std::nullopt;
     }
@@ -242,9 +247,18 @@ bool atomicFileWrite(const std::filesystem::path &filePath, const std::string &d
 {
     LOG_DEBUG << "Атомарная запись в файл: " << filePath.string()
               << ", размер данных: " << data.size();
-    if (isExistingDirectory(filePath)) {
+
+    const auto isExDir = isExistingDirectory(filePath);
+    if (isExDir.has_value()) {
+        if (*isExDir) {
+            LOG_ERROR << "Ошибка при атомарной записи: " << filePath.string()
+                      << " - это директория, а не файл";
+            return false;
+        }
+    }
+    else {
         LOG_ERROR << "Ошибка при атомарной записи: " << filePath.string()
-                  << " - это директория, а не файл";
+                  << ", проверьте права доступа";
         return false;
     }
 
@@ -386,9 +400,17 @@ bool safeFileRead(const std::filesystem::path &filePath, std::string &data)
 {
     LOG_DEBUG << "Безопасное чтение файла: " << filePath.string();
 
-    if (isExistingDirectory(filePath)) {
+    const auto isExDir = isExistingDirectory(filePath);
+    if (isExDir.has_value()) {
+        if (*isExDir) {
+            LOG_ERROR << "Ошибка при безопасном чтении: " << filePath.string()
+                      << " - это директория, а не файл";
+            return false;
+        }
+    }
+    else {
         LOG_ERROR << "Ошибка при безопасном чтении: " << filePath.string()
-                  << " - это директория, а не файл";
+                  << ", проверьте права доступа";
         return false;
     }
 
@@ -472,9 +494,18 @@ bool safeFileAppend(const std::filesystem::path &filePath, const std::string &da
 {
     LOG_DEBUG << "Безопасное добавление данных в файл: " << filePath.string()
               << ", размер данных: " << data.size();
-    if (isExistingDirectory(filePath)) {
+
+    const auto isExDir = isExistingDirectory(filePath);
+    if (isExDir.has_value()) {
+        if (*isExDir) {
+            LOG_ERROR << "Ошибка при безопасном добавлении данных: " << filePath.string()
+                      << " - это директория, а не файл";
+            return false;
+        }
+    }
+    else {
         LOG_ERROR << "Ошибка при безопасном добавлении данных: " << filePath.string()
-                  << " - это директория, а не файл";
+                  << ", проверьте права доступа";
         return false;
     }
 
@@ -545,9 +576,17 @@ std::optional<std::filesystem::path> createFileBackup(const std::filesystem::pat
 {
     LOG_DEBUG << "Создание резервной копии файла: " << filePath.string();
 
-    if (isExistingDirectory(filePath)) {
+    const auto isExDir = isExistingDirectory(filePath);
+    if (isExDir.has_value()) {
+        if (*isExDir) {
+            LOG_ERROR << "Ошибка при создании резервной копии: " << filePath.string()
+                      << " - это директория, а не файл";
+            return std::nullopt;
+        }
+    }
+    else {
         LOG_ERROR << "Ошибка при создании резервной копии: " << filePath.string()
-                  << " - это директория, а не файл";
+                  << ", проверьте права доступа";
         return std::nullopt;
     }
 
