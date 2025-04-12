@@ -24,6 +24,12 @@
 #include "utils/file_lock_guard.hpp"
 
 namespace {
+// Проверка существовании директории по указанному пути
+bool isExistingDirectory(std::filesystem::path path)
+{
+    return std::filesystem::exists(path) && std::filesystem::is_directory(path);
+}
+
 // Получение текущего времени в виде строки для создания уникальных имен файлов
 std::string getCurrentTimeFormatted()
 {
@@ -204,6 +210,11 @@ bool atomicFileWrite(const std::filesystem::path &filePath, const std::string &d
 {
     LOG_DEBUG << "Атомарная запись в файл: " << filePath.string()
               << ", размер данных: " << data.size();
+    if (isExistingDirectory(filePath)) {
+        LOG_ERROR << "Ошибка при атомарной записи: " << filePath.string()
+                  << " - это директория, а не файл";
+        return false;
+    }
 
     // Приобретаем эксклюзивную блокировку для файла
     FileLockGuard lock(filePath, LockMode::EXCLUSIVE);
@@ -343,6 +354,12 @@ bool safeFileRead(const std::filesystem::path &filePath, std::string &data)
 {
     LOG_DEBUG << "Безопасное чтение файла: " << filePath.string();
 
+    if (isExistingDirectory(filePath)) {
+        LOG_ERROR << "Ошибка при безопасном чтении: " << filePath.string()
+                  << " - это директория, а не файл";
+        return false;
+    }
+
     // Используем разделяемую блокировку для чтения
     FileLockGuard lock(filePath, LockMode::SHARED);
     if (!lock.isLocked()) {
@@ -423,6 +440,11 @@ bool safeFileAppend(const std::filesystem::path &filePath, const std::string &da
 {
     LOG_DEBUG << "Безопасное добавление данных в файл: " << filePath.string()
               << ", размер данных: " << data.size();
+    if (isExistingDirectory(filePath)) {
+        LOG_ERROR << "Ошибка при безопасном добавлении данных: " << filePath.string()
+                  << " - это директория, а не файл";
+        return false;
+    }
 
     // Используем эксклюзивную блокировку для добавления
     FileLockGuard lock(filePath, LockMode::EXCLUSIVE);
@@ -490,6 +512,12 @@ bool safeFileAppend(const std::filesystem::path &filePath, const std::string &da
 std::optional<std::filesystem::path> createFileBackup(const std::filesystem::path &filePath)
 {
     LOG_DEBUG << "Создание резервной копии файла: " << filePath.string();
+
+    if (isExistingDirectory(filePath)) {
+        LOG_ERROR << "Ошибка при создании резервной копии: " << filePath.string()
+                  << " - это директория, а не файл";
+        return std::nullopt;
+    }
 
     // Используем разделяемую блокировку для чтения исходного файла
     FileLockGuard lock(filePath, LockMode::SHARED);
