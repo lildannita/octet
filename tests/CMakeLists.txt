@@ -13,6 +13,7 @@ endif()
 # Указание источников
 set(OCTET_TEST_SOURCES
     test_file_lock_guard.cpp
+    test_file_utils.cpp
     test_uuid_generator.cpp
     testing_utils.hpp
     testing_utils.cpp
