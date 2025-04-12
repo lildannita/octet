@@ -65,30 +65,37 @@ public:
             refCount_++;
             threadIds_.push_back(threadId);
         }
+        // LCOV_EXCL_START
         else {
             UNREACHABLE("Increment function must be called only for SHARED mode");
         }
+        // LCOV_EXCL_STOP
     }
     // Уменьшение счетчика ссылок на единицу
     void decrementRefCount(std::thread::id threadId)
     {
+        // LCOV_EXCL_START
         if (refCount_ == 0) {
             UNREACHABLE("Trying to decrease empty reference counter for shared locks");
         }
-        else if (mode_ == octet::utils::LockMode::SHARED) {
+        // LCOV_EXCL_STOP
+
+        if (mode_ == octet::utils::LockMode::SHARED) {
             refCount_--;
             // Удаляем первое вхождение идентификатора потока
             auto it = std::find(threadIds_.begin(), threadIds_.end(), threadId);
+            // LCOV_EXCL_START
             if (it == threadIds_.end()) {
                 UNREACHABLE("Trying to decrease reference count from unauthorized thread");
             }
-            else {
-                threadIds_.erase(it);
-            }
+            // LCOV_EXCL_STOP
+            threadIds_.erase(it);
         }
+        // LCOV_EXCL_START
         else {
             UNREACHABLE("Decrement function must be called only for SHARED mode");
         }
+        // LCOV_EXCL_STOP
     }
 
 private:
@@ -126,9 +133,8 @@ std::string getLockModeString(octet::utils::LockMode mode)
         return "EXCLUSIVE";
     case octet::utils::LockMode::SHARED:
         return "SHARED";
-    default:
-        UNREACHABLE("Unsupported LockMode");
     }
+    UNREACHABLE("Unsupported LockMode"); // LCOV_EXCL_LINE
 }
 
 /**
@@ -297,8 +303,10 @@ bool FileLockGuard::acquireFileLock(const std::filesystem::path &filePath, LockM
     case LockMode::SHARED:
         lockType = LOCK_SH; // Shared lock
         break;
+    // LCOV_EXCL_START
     default:
         UNREACHABLE("Unsupported LockMode");
+        // LCOV_EXCL_STOP
     }
 
     switch (waitStrategy) {
@@ -355,8 +363,10 @@ bool FileLockGuard::acquireFileLock(const std::filesystem::path &filePath, LockM
         }
         break;
     }
+    // LCOV_EXCL_START
     default:
         UNREACHABLE("Unsupported LockWaitStrategy");
+        // LCOV_EXCL_STOP
     }
 
     // Записываем PID текущего процесса и режим блокировки в файл (для отладки и информативности)
@@ -386,8 +396,10 @@ bool FileLockGuard::acquireFileLock(const std::filesystem::path &filePath, LockM
     case LockMode::SHARED:
         winMode = FILE_SHARE_READ;
         break;
+    // LCOV_EXCL_START
     default:
         UNREACHABLE("Unsupported LockMode");
+        // LCOV_EXCL_STOP
     }
 
     auto openHandle = [&lockPath, &winMode]() {
@@ -447,8 +459,10 @@ bool FileLockGuard::acquireFileLock(const std::filesystem::path &filePath, LockM
             }
             break;
         }
+        // LCOV_EXCL_START
         default:
             UNREACHABLE("Unsupported LockWaitStrategy");
+            // LCOV_EXCL_STOP
         }
     }
 
