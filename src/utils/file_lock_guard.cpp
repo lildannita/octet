@@ -1,6 +1,7 @@
 #include "utils/file_lock_guard.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <chrono>
 #include <mutex>
 #include <thread>
@@ -23,7 +24,6 @@ typedef int FileDescriptor;
 typedef HANDLE FileDescriptor;
 #endif
 
-#include "utils/file_utils.hpp"
 #include "utils/logger.hpp"
 #include "utils/compiler.hpp"
 
@@ -158,6 +158,49 @@ std::filesystem::path getLockFilePath(const std::filesystem::path &filePath)
 {
     return std::filesystem::path(filePath.string() + ".lock");
 }
+
+bool checkDirectoryExists(const std::filesystem::path &dir)
+{
+    LOG_DEBUG << "Проверка директории для файла блокировки: " << dir.string();
+
+    std::error_code ec;
+    if (std::filesystem::exists(dir, ec)) {
+        assert(!ec);
+
+        if (!std::filesystem::is_directory(dir, ec)) {
+            if (ec) {
+                LOG_ERROR << "Ошибка при проверке, является ли путь директорией: " << dir.string()
+                          << ", код ошибки: " << ec.value() << ", сообщение: " << ec.message();
+                return false;
+            }
+            LOG_ERROR << "Путь существует, но не является директорией: " << dir.string();
+            return false;
+        }
+        LOG_DEBUG << "Директория уже существует: " << dir.string();
+        return true;
+    }
+    else if (ec) {
+        LOG_ERROR << "Ошибка при проверке существования директории: " << dir.string()
+                  << ", код ошибки: " << ec.value() << ", сообщение: " << ec.message();
+        return false;
+    }
+
+    // Создаем директорию и все родительские директории
+    const auto created = std::filesystem::create_directories(dir, ec);
+    if (ec) {
+        LOG_ERROR << "Ошибка при создании директории: " << dir.string()
+                  << ", код ошибки: " << ec.value() << ", сообщение: " << ec.message();
+        return false;
+    }
+
+    if (created) {
+        LOG_INFO << "Создана директория: " << dir.string();
+    }
+    else {
+        LOG_ERROR << "Не удалось создать директорию: " << dir.string();
+    }
+    return created;
+}
 } // namespace
 
 namespace octet::utils {
@@ -202,7 +245,7 @@ bool FileLockGuard::acquireFileLock(const std::filesystem::path &filePath, LockM
 
     // Проверяем, существует ли родительская директория
     auto parentDir = filePath.parent_path();
-    if (!ensureDirectoryExists(parentDir)) {
+    if (!checkDirectoryExists(parentDir)) {
         LOG_ERROR << "Не удалось обеспечить существование директории для файла блокировки: "
                   << parentDir.string();
         return false;
