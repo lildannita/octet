@@ -154,6 +154,38 @@ bool syncDirectory(const std::filesystem::path &dir)
     UNREACHABLE("Unsupported platform");
 #endif
 }
+
+std::optional<std::filesystem::path> do_createFileBackup(const std::filesystem::path &filePath)
+{
+    if (!octet::utils::isFileReadable(filePath)) {
+        LOG_ERROR << "Не удается создать резервную копию: файл не доступен для чтения: "
+                  << filePath.string();
+        return std::nullopt;
+    }
+
+    // Получаем путь для резервной копии
+    const auto backupPath = getBackupFilePath(filePath);
+    LOG_INFO << "Создание резервной копии: " << filePath.string() << " -> " << backupPath.string();
+
+    // Копируем файл в резервную копию
+    std::error_code ec;
+    std::filesystem::copy_file(filePath, backupPath,
+                               std::filesystem::copy_options::overwrite_existing, ec);
+    if (ec) {
+        LOG_ERROR << "Ошибка при создании резервной копии: " << backupPath.string()
+                  << ", код ошибки: " << ec.value() << ", сообщение: " << ec.message();
+        return std::nullopt;
+    }
+
+    if (!syncDirectory(filePath.parent_path())) {
+        LOG_WARNING << "Резервная копия создана, но синхронизация директории не удалась: "
+                    << filePath.string();
+        return std::nullopt;
+    }
+
+    LOG_INFO << "Успешно создана резервная копия: " << backupPath.string();
+    return backupPath;
+}
 } // namespace
 
 namespace octet::utils {
@@ -277,7 +309,7 @@ bool atomicFileWrite(const std::filesystem::path &filePath, const std::string &d
                       << filePath.string();
 
             // Создаем резервную копию существующего файла для безопасности
-            const auto backupPath = createFileBackup(filePath);
+            const auto backupPath = do_createFileBackup(filePath);
             if (!backupPath.has_value()) {
                 LOG_ERROR
                     << "Не удалось создать резервную копию исходного файла для атомарной записи: "
@@ -519,41 +551,15 @@ std::optional<std::filesystem::path> createFileBackup(const std::filesystem::pat
         return std::nullopt;
     }
 
-    // Используем разделяемую блокировку для чтения исходного файла
-    FileLockGuard lock(filePath, LockMode::SHARED);
+    // Используем эксклюзивную блокировку, так как помимо чтения исходного файла, нужно
+    // еще обеспечить уникальность пути к резервной копии
+    FileLockGuard lock(filePath);
     if (!lock.isLocked()) {
         LOG_ERROR << "Не удалось получить блокировку для создания резервной копии: "
                   << filePath.string();
         return std::nullopt;
     }
 
-    if (!isFileReadable(filePath)) {
-        LOG_ERROR << "Не удается создать резервную копию: файл не доступен для чтения: "
-                  << filePath.string();
-        return std::nullopt;
-    }
-
-    // Получаем путь для резервной копии
-    const auto backupPath = getBackupFilePath(filePath);
-    LOG_INFO << "Создание резервной копии: " << filePath.string() << " -> " << backupPath.string();
-
-    // Копируем файл в резервную копию
-    std::error_code ec;
-    std::filesystem::copy_file(filePath, backupPath,
-                               std::filesystem::copy_options::overwrite_existing, ec);
-    if (ec) {
-        LOG_ERROR << "Ошибка при создании резервной копии: " << backupPath.string()
-                  << ", код ошибки: " << ec.value() << ", сообщение: " << ec.message();
-        return std::nullopt;
-    }
-
-    if (!syncDirectory(filePath.parent_path())) {
-        LOG_WARNING << "Резервная копия создана, но синхронизация директории не удалась: "
-                    << filePath.string();
-        return std::nullopt;
-    }
-
-    LOG_INFO << "Успешно создана резервная копия: " << backupPath.string();
-    return backupPath;
+    return do_createFileBackup(filePath);
 }
 } // namespace octet::utils
