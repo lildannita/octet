@@ -51,18 +51,4 @@ bool safeFileAppend(const std::filesystem::path &filePath, const std::string &da
  * @return Путь к созданной резервной копии или пустое значение в случае ошибки
  */
 std::optional<std::filesystem::path> createFileBackup(const std::filesystem::path &filePath);
-
-/**
- * @brief Пытается создать и захватить файл блокировки
- * @param lockFilePath Путь к файлу блокировки
- * @return true, если блокировка успешно захвачена
- */
-bool acquireFileLock(const std::filesystem::path &lockFilePath);
-
-/**
- * @brief Освобождает ранее захваченную блокировку
- * @param lockFilePath Путь к файлу блокировки
- * @return true, если блокировка успешно освобождена
- */
-bool releaseFileLock(const std::filesystem::path &lockFilePath);
 } // namespace octet::utils

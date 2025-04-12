@@ -1,14 +1,12 @@
 #include "utils/file_utils.hpp"
 
+#include <cassert>
 #include <cstdio>
-#include <cstring>
 #include <chrono>
 #include <fstream>
-#include <mutex>
 #include <random>
 #include <thread>
 #include <system_error>
-#include <unordered_map>
 
 #if defined(OCTET_PLATFORM_UNIX)
 #include <unistd.h>
@@ -22,26 +20,20 @@
 #endif
 
 #include "utils/compiler.hpp"
+#include "utils/logger.hpp"
+#include "utils/file_lock_guard.hpp"
 
 namespace {
-// Глобальные контейнеры для хранения активных дескрипторов по lock-файлам
-#if defined(OCTET_PLATFORM_UNIX)
-static std::unordered_map<std::string, int> fileLockMap;
-#elif defined(OCTET_PLATFORM_WINDOWS)
-static std::unordered_map<std::string, HANDLE> fileLockMap;
-#endif
-// Мьютекс для безопасного доступа к контейнерам из нескольких потоков
-static std::mutex fileLockMutex;
-
 // Получение текущего времени в виде строки для создания уникальных имен файлов
 std::string getCurrentTimeFormatted()
 {
     // Получаем текущее время из системных часов
-    auto now = std::chrono::system_clock::now();
+    const auto now = std::chrono::system_clock::now();
     // now -> time_t для использования localtime
-    auto time_t_now = std::chrono::system_clock::to_time_t(now);
+    const auto time_t_now = std::chrono::system_clock::to_time_t(now);
     // Получаем миллисекунды текущей секунды
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+    const auto ms
+        = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
 
     char buffer[32];
     std::strftime(buffer, sizeof(buffer), "%Y%m%d_%H%M%S", std::localtime(&time_t_now));
@@ -103,7 +95,7 @@ std::filesystem::path getBackupFilePath(const std::filesystem::path &originalPat
     return backupPath;
 }
 
-// Синхронизация директории для обеспечения сохранности файловых операций
+// Синхронизация директории для безопасного сохранения метаданных
 bool syncDirectory(const std::filesystem::path &dir)
 {
     LOG_DEBUG << "Синхронизация директории: " << dir.string();
@@ -114,17 +106,17 @@ bool syncDirectory(const std::filesystem::path &dir)
     const auto fd = open(dir.c_str(), O_RDONLY);
     if (fd == -1) {
         LOG_ERROR << "Не удалось открыть директорию для синхронизации: " << dir.string()
-                  << ", ошибка: " << strerror(errno);
+                  << ", ошибка: " << octet::utils::errnoToString(errno);
         return false;
     }
 
-    const auto result = fsync(fd);
+    const auto success = fsync(fd) == 0;
     close(fd);
-    if (result != 0) {
+    if (!success) {
         LOG_ERROR << "Ошибка синхронизации директории: " << dir.string()
-                  << ", ошибка: " << strerror(errno);
+                  << ", ошибка: " << octet::utils::errnoToString(errno);
     }
-    return result == 0;
+    return success;
 #elif defined(OCTET_PLATFORM_WINDOWS)
     // Открываем дескриптор директории
     HANDLE hDir = CreateFileW(dir.wstring().c_str(), // Путь в формате wide string
@@ -139,7 +131,7 @@ bool syncDirectory(const std::filesystem::path &dir)
     // Проверка, получилось ли открыть дескриптор
     if (hDir == INVALID_HANDLE_VALUE) {
         LOG_ERROR << "Не удалось открыть директорию для синхронизации: " << dir.string()
-                  << ", ошибка: " << strerror(errno);
+                  << ", ошибка: " << octet::utils::errnoToString(errno);
         return false;
     }
 
@@ -156,18 +148,6 @@ bool syncDirectory(const std::filesystem::path &dir)
     UNREACHABLE("Unsupported platform");
 #endif
 }
-
-// Получение PID текущего процесса в виде строки
-std::string getCurrentPid()
-{
-#if defined(OCTET_PLATFORM_UNIX)
-    return std::to_string(getpid());
-#elif defined(OCTET_PLATFORM_WINDOWS)
-    return std::to_string(GetCurrentProcessId());
-#else
-    UNREACHABLE("Unsupported platform");
-#endif
-}
 } // namespace
 
 namespace octet::utils {
@@ -178,11 +158,7 @@ bool ensureDirectoryExists(const std::filesystem::path &dir, bool createIfMissin
 
     std::error_code ec;
     if (std::filesystem::exists(dir, ec)) {
-        if (ec) {
-            LOG_ERROR << "Ошибка при проверке существования директории: " << dir.string()
-                      << ", код ошибки: " << ec.value() << ", сообщение: " << ec.message();
-            return false;
-        }
+        assert(!ec);
 
         if (!std::filesystem::is_directory(dir, ec)) {
             if (ec) {
@@ -208,18 +184,19 @@ bool ensureDirectoryExists(const std::filesystem::path &dir, bool createIfMissin
     }
 
     // Создаем директорию и все родительские директории
-    bool created = std::filesystem::create_directories(dir, ec);
+    const auto created = std::filesystem::create_directories(dir, ec);
     if (ec) {
         LOG_ERROR << "Ошибка при создании директории: " << dir.string()
                   << ", код ошибки: " << ec.value() << ", сообщение: " << ec.message();
         return false;
     }
 
-    if (!created) {
+    if (created) {
+        LOG_INFO << "Создана директория: " << dir.string();
+    }
+    else {
         LOG_ERROR << "Не удалось создать директорию: " << dir.string();
     }
-
-    LOG_INFO << "Создана директория: " << dir.string();
     return created;
 }
 
@@ -228,15 +205,22 @@ bool atomicFileWrite(const std::filesystem::path &filePath, const std::string &d
     LOG_DEBUG << "Атомарная запись в файл: " << filePath.string()
               << ", размер данных: " << data.size();
 
+    // Приобретаем эксклюзивную блокировку для файла
+    FileLockGuard lock(filePath, LockMode::EXCLUSIVE);
+    if (!lock.isLocked()) {
+        LOG_ERROR << "Не удалось получить блокировку для файла: " << filePath.string();
+        return false;
+    }
+
     // Проверяем, существует ли родительская директория
-    auto parentDir = filePath.parent_path();
+    const auto parentDir = filePath.parent_path();
     if (!ensureDirectoryExists(parentDir)) {
         LOG_ERROR << "Не удалось обеспечить существование директории: " << parentDir.string();
         return false;
     }
 
     // Создаем временный файл в той же директории
-    auto tempFilePath = getTempFilePath(filePath);
+    const auto tempFilePath = getTempFilePath(filePath);
 
     // Записываем данные во временный файл
     // Используем блок области видимости для гарантированного закрытия файла
@@ -293,6 +277,7 @@ bool atomicFileWrite(const std::filesystem::path &filePath, const std::string &d
             // Удаляем существующий файл
             std::filesystem::remove(filePath, ec);
             if (ec) {
+                assert(std::filesystem::exists(filePath));
                 LOG_ERROR << "Не удалось удалить существующий файл: " << filePath.string()
                           << ", код ошибки: " << ec.value() << ", сообщение: " << ec.message();
                 std::filesystem::remove(tempFilePath);
@@ -313,15 +298,18 @@ bool atomicFileWrite(const std::filesystem::path &filePath, const std::string &d
                                                std::filesystem::copy_options::overwrite_existing,
                                                ec);
                     if (ec) {
-                        LOG_ERROR << "Не удалось восстановить из резервной копии: "
-                                  << (*backupPath).string() << ", код ошибки: " << ec.value()
-                                  << ", сообщение: " << ec.message();
+                        LOG_CRITICAL << "Не удалось восстановить из резервной копии: "
+                                     << (*backupPath).string() << ", код ошибки: " << ec.value()
+                                     << ", сообщение: " << ec.message();
                     }
                     else {
                         std::filesystem::remove(*backupPath);
                     }
                 }
-
+                else {
+                    LOG_CRITICAL << "Не удалось восстановить из резервной копии: копия "
+                                 << (*backupPath).string() << " была удалена";
+                }
                 std::filesystem::remove(tempFilePath);
                 return false;
             }
@@ -340,7 +328,12 @@ bool atomicFileWrite(const std::filesystem::path &filePath, const std::string &d
         }
     }
 
-    syncDirectory(parentDir);
+    if (!syncDirectory(parentDir)) {
+        LOG_WARNING << "Файл записан, но синхронизация директории не удалась: "
+                    << filePath.string();
+        return false;
+    }
+
     LOG_INFO << "Атомарная запись успешно завершена: " << filePath.string()
              << ", размер: " << data.size();
     return true;
@@ -349,6 +342,13 @@ bool atomicFileWrite(const std::filesystem::path &filePath, const std::string &d
 bool safeFileRead(const std::filesystem::path &filePath, std::string &data)
 {
     LOG_DEBUG << "Безопасное чтение файла: " << filePath.string();
+
+    // Используем разделяемую блокировку для чтения
+    FileLockGuard lock(filePath, LockMode::SHARED);
+    if (!lock.isLocked()) {
+        LOG_ERROR << "Не удалось получить блокировку для чтения файла: " << filePath.string();
+        return false;
+    }
 
     if (!isFileReadable(filePath)) {
         LOG_ERROR << "Файл не доступен для чтения: " << filePath.string();
@@ -409,7 +409,7 @@ bool isFileReadable(const std::filesystem::path &filePath)
 
     // Пытаемся открыть файл для чтения, чтобы убедиться в доступности
     std::ifstream testFile(filePath);
-    bool readable = testFile.good();
+    const auto readable = testFile.good();
     if (readable) {
         LOG_DEBUG << "Файл доступен для чтения: " << filePath.string();
     }
@@ -424,8 +424,15 @@ bool safeFileAppend(const std::filesystem::path &filePath, const std::string &da
     LOG_DEBUG << "Безопасное добавление данных в файл: " << filePath.string()
               << ", размер данных: " << data.size();
 
+    // Используем эксклюзивную блокировку для добавления
+    FileLockGuard lock(filePath, LockMode::EXCLUSIVE);
+    if (!lock.isLocked()) {
+        LOG_ERROR << "Не удалось получить блокировку для добавления в файл: " << filePath.string();
+        return false;
+    }
+
     // Проверяем, существует ли родительская директория
-    auto parentDir = filePath.parent_path();
+    const auto parentDir = filePath.parent_path();
     if (!ensureDirectoryExists(parentDir)) {
         LOG_ERROR << "Не удалось обеспечить существование директории: " << parentDir.string();
         return false;
@@ -439,6 +446,11 @@ bool safeFileAppend(const std::filesystem::path &filePath, const std::string &da
                       << ", код ошибки: " << ec.value() << ", сообщение: " << ec.message();
             return false;
         }
+
+        LOG_WARNING << "Невозможно добавить данные в несуществующий файл: " << filePath.string()
+                    << ", пробуем выполнить атомарную запись данных";
+        // Освобождаем блокировку для избежания deadlock
+        lock.release();
         return atomicFileWrite(filePath, data);
     }
 
@@ -465,6 +477,12 @@ bool safeFileAppend(const std::filesystem::path &filePath, const std::string &da
         return false;
     }
 
+    if (!syncDirectory(parentDir)) {
+        LOG_WARNING << "Файл обновлен, но синхронизация директории не удалась: "
+                    << filePath.string();
+        return false;
+    }
+
     LOG_DEBUG << "Успешно добавлено " << dataSize << " байт к файлу: " << filePath.string();
     return true;
 }
@@ -473,6 +491,14 @@ std::optional<std::filesystem::path> createFileBackup(const std::filesystem::pat
 {
     LOG_DEBUG << "Создание резервной копии файла: " << filePath.string();
 
+    // Используем разделяемую блокировку для чтения исходного файла
+    FileLockGuard lock(filePath, LockMode::SHARED);
+    if (!lock.isLocked()) {
+        LOG_ERROR << "Не удалось получить блокировку для создания резервной копии: "
+                  << filePath.string();
+        return std::nullopt;
+    }
+
     if (!isFileReadable(filePath)) {
         LOG_ERROR << "Не удается создать резервную копию: файл не доступен для чтения: "
                   << filePath.string();
@@ -480,7 +506,7 @@ std::optional<std::filesystem::path> createFileBackup(const std::filesystem::pat
     }
 
     // Получаем путь для резервной копии
-    auto backupPath = getBackupFilePath(filePath);
+    const auto backupPath = getBackupFilePath(filePath);
     LOG_INFO << "Создание резервной копии: " << filePath.string() << " -> " << backupPath.string();
 
     // Копируем файл в резервную копию
@@ -493,177 +519,13 @@ std::optional<std::filesystem::path> createFileBackup(const std::filesystem::pat
         return std::nullopt;
     }
 
+    if (!syncDirectory(filePath.parent_path())) {
+        LOG_WARNING << "Резервная копия создана, но синхронизация директории не удалась: "
+                    << filePath.string();
+        return std::nullopt;
+    }
+
     LOG_INFO << "Успешно создана резервная копия: " << backupPath.string();
     return backupPath;
-}
-
-bool acquireFileLock(const std::filesystem::path &lockFilePath)
-{
-    LOG_DEBUG << "Попытка получения блокировки: " << lockFilePath.string();
-
-    // Проверяем, существует ли родительская директория
-    auto parentDir = lockFilePath.parent_path();
-    if (!ensureDirectoryExists(parentDir)) {
-        LOG_ERROR << "Не удалось обеспечить существование директории для файла блокировки: "
-                  << parentDir.string();
-        return false;
-    }
-
-#if defined(OCTET_PLATFORM_SUPPORTED)
-    // Преобразуем путь к lock-файлу в строку для использования в глобальном контейнере
-    const std::string lockPathStr = lockFilePath.string();
-
-    // Блокируем мьютекс для защиты доступа к глобальному контейнеру
-    std::lock_guard<std::mutex> guard(fileLockMutex);
-
-    // Если блокировка для данного файла уже захвачена, возвращаем false
-    if (fileLockMap.find(lockPathStr) != fileLockMap.end()) {
-        LOG_WARNING << "Блокировка для файла уже захвачена в текущем процессе: "
-                    << lockFilePath.string();
-
-        return false;
-    }
-#else
-    UNREACHABLE("Unsupported platform");
-#endif
-
-#if defined(OCTET_PLATFORM_UNIX)
-    // Открываем (или создаём, если не существует) файл блокировки с правами чтения/записи
-    const auto fd = open(lockFilePath.c_str(), O_RDWR | O_CREAT, 0666);
-    if (fd == -1) {
-        LOG_ERROR << "Не удалось открыть файл блокировки: " << lockFilePath.string()
-                  << ", ошибка: " << strerror(errno);
-        return false;
-    }
-
-    // Пытаемся получить эксклюзивную блокировку без ожидания
-    if (flock(fd, LOCK_EX | LOCK_NB) != 0) {
-        LOG_ERROR << "Не удалось получить блокировку: " << lockFilePath.string()
-                  << ", ошибка: " << strerror(errno);
-        close(fd);
-        return false;
-    }
-
-    // Записываем PID текущего процесса в файл блокировки (для отладки и информативности)
-    const auto pid = getCurrentPid();
-    std::string pidStr = pid + "\n";
-    const auto writeResult = write(fd, pidStr.c_str(), pidStr.size());
-    if (writeResult == -1) {
-        LOG_WARNING << "Не удалось записать PID в файл блокировки: " << lockFilePath.string()
-                    << ", ошибка: " << strerror(errno);
-    }
-
-    // Сохраняем файловый дескриптор в глобальном контейнере по ключу lockPathStr
-    fileLockMap[lockPathStr] = fd;
-    LOG_INFO << "Успешно получена блокировка: " << lockFilePath.string() << ", PID: " << pid;
-    return true;
-#elif defined(OCTET_PLATFORM_WINDOWS)
-    // Открываем дескриптор файла
-    HANDLE fileHandle = CreateFileW(lockFilePath.wstring().c_str(), // Путь к формате wide string
-                                    GENERIC_READ | GENERIC_WRITE, // Права на чтение и запись
-                                    0, // Запрещаем совместное использование
-                                    nullptr, // Атрибуты безопасности по умолчанию
-                                    OPEN_ALWAYS, // Открыть существующий или создать новый
-                                    FILE_ATTRIBUTE_NORMAL, // Обычные атрибуты файла
-                                    nullptr // Шаблон не используем
-    );
-
-    // Проверка, получилось ли открыть дескриптор
-    if (fileHandle == INVALID_HANDLE_VALUE) {
-        DWORD error = GetLastError();
-        LOG_ERROR << "Не удалось открыть файл блокировки: " << lockFilePath.string()
-                  << ", ошибка: " << error;
-        return false;
-    }
-
-    // Записываем PID в файл блокировки
-    const auto pid = getCurrentPid();
-    std::string pidStr = getCurrentPid() + "\n";
-    DWORD bytesWritten = 0;
-    const auto writeResult = WriteFile(fileHandle, pidStr.c_str(),
-                                       static_cast<DWORD>(pidStr.size()), &bytesWritten, nullptr);
-    if (!writeResult) {
-        DWORD error = GetLastError();
-        LOG_WARNING << "Не удалось записать PID в файл блокировки: " << lockFilePath.string()
-                    << ", ошибка: " << error;
-    }
-
-    // Сохраняем дескриптор файла блокировки в глобальном контейнере
-    fileLockMap[lockPathStr] = fileHandle;
-    LOG_INFO << "Успешно получена блокировка: " << lockFilePath.string() << ", PID: " << pid;
-    return true;
-#else
-    UNREACHABLE("Unsupported platform");
-#endif
-}
-
-bool releaseFileLock(const std::filesystem::path &lockFilePath)
-{
-    LOG_DEBUG << "Освобождение блокировки: " << lockFilePath.string();
-
-#if defined(OCTET_PLATFORM_SUPPORTED)
-    const std::string lockPathStr = lockFilePath.string();
-    // Блокируем мьютекс для защиты глобального контейнера
-    std::lock_guard<std::mutex> guard(fileLockMutex);
-    // Ищем дескриптор для данного lock-файла
-    auto it = fileLockMap.find(lockPathStr);
-    if (it == fileLockMap.end()) {
-        LOG_WARNING << "Попытка освободить несуществующую блокировку: " << lockFilePath.string();
-        return false;
-    }
-#else
-    UNREACHABLE("Unsupported platform");
-#endif
-
-#if defined(OCTET_PLATFORM_UNIX)
-    // Получаем дескриптор для данного lock-файла
-    const auto fd = it->second;
-    // Снимаем блокировку
-    if (flock(fd, LOCK_UN) != 0) {
-        LOG_ERROR << "Ошибка при снятии блокировки: " << lockFilePath.string()
-                  << ", ошибка: " << strerror(errno);
-    }
-    // Закрываем файловый дескриптор
-    if (close(fd) != 0) {
-        LOG_ERROR << "Ошибка при закрытии файлового дескриптора: " << lockFilePath.string()
-                  << ", ошибка: " << strerror(errno);
-    }
-
-    // Удаляем файл блокировки
-    if (unlink(lockFilePath.c_str()) != 0) {
-        LOG_ERROR << "Не удалось удалить файл блокировки: " << lockFilePath.string()
-                  << ", ошибка: " << strerror(errno);
-        return false;
-    }
-    // Удаляем запись из контейнера
-    fileLockMap.erase(it);
-
-    LOG_INFO << "Блокировка успешно освобождена: " << lockFilePath.string();
-    return true;
-#elif defined(OCTET_PLATFORM_WINDOWS)
-    // Получаем дескриптор для данного lock-файла
-    HANDLE fileHandle = it->second;
-    // Закрываем дескриптор файла
-    if (!CloseHandle(fileHandle)) {
-        DWORD error = GetLastError();
-        LOG_ERROR << "Ошибка при закрытии дескриптора файла: " << lockFilePath.string()
-                  << ", ошибка: " << error;
-    }
-
-    // Удаляем файл блокировки
-    if (!DeleteFileW(lockFilePath.wstring().c_str())) {
-        DWORD error = GetLastError();
-        LOG_ERROR << "Не удалось удалить файл блокировки: " << lockFilePath.string()
-                  << ", код ошибки Windows: " << error;
-        return false;
-    }
-    // Удаляем запись из контейнера
-    fileLockMap.erase(it);
-
-    LOG_INFO << "Блокировка успешно освобождена: " << lockFilePath.string();
-    return true;
-#else
-    UNREACHABLE("Unsupported platform");
-#endif
 }
 } // namespace octet::utils
