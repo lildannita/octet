@@ -199,6 +199,8 @@ bool ensureDirectoryExists(const std::filesystem::path &dir, bool createIfMissin
     LOG_DEBUG << "Проверка директории: " << dir.string()
               << ", создавать если отсутствует: " << (createIfMissing ? "да" : "нет");
 
+    FileLockGuard lock(dir, LockMode::EXCLUSIVE);
+
     std::error_code ec;
     if (std::filesystem::exists(dir, ec)) {
         assert(!ec);
@@ -262,17 +264,17 @@ bool atomicFileWrite(const std::filesystem::path &filePath, const std::string &d
         return false;
     }
 
-    // Приобретаем эксклюзивную блокировку для файла
-    FileLockGuard lock(filePath, LockMode::EXCLUSIVE);
-    if (!lock.isLocked()) {
-        LOG_ERROR << "Не удалось получить блокировку для файла: " << filePath.string();
-        return false;
-    }
-
     // Проверяем, существует ли родительская директория
     const auto parentDir = filePath.parent_path();
     if (!ensureDirectoryExists(parentDir)) {
         LOG_ERROR << "Не удалось обеспечить существование директории: " << parentDir.string();
+        return false;
+    }
+
+    // Приобретаем эксклюзивную блокировку для файла
+    FileLockGuard lock(filePath, LockMode::EXCLUSIVE);
+    if (!lock.isLocked()) {
+        LOG_ERROR << "Не удалось получить блокировку для файла: " << filePath.string();
         return false;
     }
 
@@ -509,17 +511,17 @@ bool safeFileAppend(const std::filesystem::path &filePath, const std::string &da
         return false;
     }
 
-    // Используем эксклюзивную блокировку для добавления
-    FileLockGuard lock(filePath, LockMode::EXCLUSIVE);
-    if (!lock.isLocked()) {
-        LOG_ERROR << "Не удалось получить блокировку для добавления в файл: " << filePath.string();
-        return false;
-    }
-
     // Проверяем, существует ли родительская директория
     const auto parentDir = filePath.parent_path();
     if (!ensureDirectoryExists(parentDir)) {
         LOG_ERROR << "Не удалось обеспечить существование директории: " << parentDir.string();
+        return false;
+    }
+
+    // Используем эксклюзивную блокировку для добавления
+    FileLockGuard lock(filePath, LockMode::EXCLUSIVE);
+    if (!lock.isLocked()) {
+        LOG_ERROR << "Не удалось получить блокировку для добавления в файл: " << filePath.string();
         return false;
     }
 
