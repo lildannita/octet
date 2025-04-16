@@ -194,6 +194,48 @@ std::optional<std::filesystem::path> do_createFileBackup(const std::filesystem::
 } // namespace
 
 namespace octet::utils {
+bool checkIfFileExists(const std::filesystem::path &file, bool createDirsIfMissing)
+{
+    LOG_DEBUG << "Проверка существования файла: " << file.string();
+
+    const auto isExDir = isExistingDirectory(file);
+    if (isExDir.has_value()) {
+        if (*isExDir) {
+            LOG_ERROR << "Ошибка при проверке существования файла: " << file.string()
+                      << " - это директория, а не файл";
+            return false;
+        }
+    }
+    else {
+        LOG_ERROR << "Ошибка при проверке существования файла: " << file.string()
+                  << ", проверьте права доступа";
+        return false;
+    }
+
+    // Проверяем, существует ли родительская директория
+    const auto parentDir = file.parent_path();
+    if (!ensureDirectoryExists(parentDir, createDirsIfMissing)) {
+        LOG_INFO << "Файл не существует: " << file.string();
+        return false;
+    }
+
+    // Проверяем, существует ли сам файл
+    std::error_code ec;
+    if (std::filesystem::exists(file, ec)) {
+        LOG_DEBUG << "Файл уже существует: " << file.string();
+        return true;
+    }
+
+    if (ec) {
+        LOG_ERROR << "Ошибка при проверке существования файла: " << file.string()
+                  << ", код ошибки: " << ec.value() << ", сообщение: " << ec.message();
+    }
+    else {
+        LOG_DEBUG << "Файл не существует: " << file.string();
+    }
+    return false;
+}
+
 bool ensureDirectoryExists(const std::filesystem::path &dir, bool createIfMissing)
 {
     LOG_DEBUG << "Проверка директории: " << dir.string()

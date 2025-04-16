@@ -129,6 +129,42 @@ protected:
     }
 };
 
+// Тест проверки существования файла в существующей директории
+TEST_F(FileUtilsTest, СheckIfFileExistsInDirExists)
+{
+    const auto filePath = getTestFilePath();
+    EXPECT_FALSE(std::filesystem::exists(filePath));
+    EXPECT_FALSE(utils::checkIfFileExists(filePath));
+
+    createTestFile(filePath);
+    EXPECT_TRUE(std::filesystem::exists(filePath));
+    EXPECT_TRUE(utils::checkIfFileExists(filePath));
+}
+
+// Тест проверки существования файла в несуществующей директории
+TEST_F(FileUtilsTest, СheckIfFileExistsInDirNonExists)
+{
+    const auto dirPath = testDir / "new_dir";
+    const auto filePath = dirPath / "test_file.txt";
+
+    EXPECT_FALSE(std::filesystem::exists(dirPath));
+    EXPECT_FALSE(std::filesystem::exists(filePath));
+
+    // Проверяем без создания директории
+    EXPECT_FALSE(utils::checkIfFileExists(filePath, false));
+
+    // После проверки директория так же должна не существовать
+    EXPECT_FALSE(std::filesystem::exists(dirPath));
+
+    // Проверяем с созданием директории, но файл так же должен не существовать
+    EXPECT_FALSE(utils::checkIfFileExists(filePath));
+    EXPECT_TRUE(std::filesystem::exists(dirPath));
+
+    createTestFile(filePath);
+    EXPECT_TRUE(std::filesystem::exists(filePath));
+    EXPECT_TRUE(utils::checkIfFileExists(filePath));
+}
+
 // Проверка существования несуществующей директории
 TEST_F(FileUtilsTest, EnsureDirectoryNonExists)
 {

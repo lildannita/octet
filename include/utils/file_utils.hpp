@@ -6,6 +6,14 @@
 
 namespace octet::utils {
 /**
+ * @brief Проверяет существование файла и подготавливает родительские директории при необходимости
+ * @param file Путь к файлу
+ * @param createDirsIfMissing Создавать директорию, если отсутствует
+ * @return true, если файл существует
+ */
+bool checkIfFileExists(const std::filesystem::path &file, bool createDirsIfMissing = true);
+
+/**
  * @brief Проверяет существование директории и создает её (и все родительские директории) при
  * необходимости
  * @param dir Путь к директории
