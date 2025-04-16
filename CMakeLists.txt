@@ -52,6 +52,7 @@ endif()
 
 # Указание источников
 set(OCTET_SOURCES
+    src/storage/journal_manager.cpp
     src/storage/uuid_generator.cpp
     src/utils/file_lock_guard.cpp
     src/utils/file_utils.cpp
