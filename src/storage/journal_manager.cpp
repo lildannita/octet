@@ -204,8 +204,10 @@ JournalManager::JournalManager(const std::filesystem::path &journalPath)
             LOG_INFO << "Создана резервная копия поврежденного журнала: " << backupPath->string();
         }
         else {
-            LOG_ERROR << "Не удалось создать резервную копию поврежденного журнала: "
-                      << journalFilePath_.string() << ", прерываем, чтобы не повредить данные";
+            LOG_CRITICAL << "Не удалось создать резервную копию поврежденного журнала: "
+                         << journalFilePath_.string() << ", прерываем, чтобы не повредить данные";
+            throw std::runtime_error("JournalManager: не удалось создать новый журнал "
+                                     + journalFilePath_.string());
             return;
         }
     }
@@ -214,7 +216,9 @@ JournalManager::JournalManager(const std::filesystem::path &journalPath)
         // Создаем новый файл журнала
         const std::string header = JOURNAL_HEADER;
         if (!utils::atomicFileWrite(journalFilePath_, header)) {
-            LOG_ERROR << "Не удалось создать новый файл журнала: " << journalFilePath_.string();
+            LOG_CRITICAL << "Не удалось создать новый файл журнала: " << journalFilePath_.string();
+            throw std::runtime_error("JournalManager: не удалось создать новый журнал "
+                                     + journalFilePath_.string());
         }
     }
 }
