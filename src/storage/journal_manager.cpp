@@ -272,6 +272,21 @@ bool JournalManager::do_writeOperation(OperationType opType, const std::string &
     return writeResult;
 }
 
+bool JournalManager::writeInsert(const std::string &uuid, const std::string &data)
+{
+    return writeOperation(OperationType::INSERT, uuid, data);
+}
+
+bool JournalManager::writeUpdate(const std::string &uuid, const std::string &data)
+{
+    return writeOperation(OperationType::UPDATE, uuid, data);
+}
+
+bool JournalManager::writeRemove(const std::string &uuid)
+{
+    return writeOperation(OperationType::REMOVE, uuid);
+}
+
 bool JournalManager::writeCheckpoint(const std::string &snapshotId)
 {
     return writeOperation(OperationType::CHECKPOINT, snapshotId);

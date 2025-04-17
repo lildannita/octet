@@ -114,6 +114,29 @@ public:
                         const std::string &data = "");
 
     /**
+     * @brief Записывает операцию INSERT в журнал
+     * @param uuid Идентификатор строки
+     * @param data Данные операции
+     * @return true если запись выполнена успешно
+     */
+    bool writeInsert(const std::string &uuid, const std::string &data = "");
+
+    /**
+     * @brief Записывает операцию UPDATE в журнал
+     * @param uuid Идентификатор строки
+     * @param data Данные операции
+     * @return true если запись выполнена успешно
+     */
+    bool writeUpdate(const std::string &uuid, const std::string &data = "");
+
+    /**
+     * @brief Записывает операцию REMOVE в журнал
+     * @param uuid Идентификатор строки
+     * @return true если запись выполнена успешно
+     */
+    bool writeRemove(const std::string &uuid);
+
+    /**
      * @brief Создаёт запись контрольной точки в журнале
      * @param snapshotId Идентификатор снимка состояния
      * @return true если запись выполнена успешно
