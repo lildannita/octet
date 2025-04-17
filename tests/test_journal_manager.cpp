@@ -544,33 +544,34 @@ TEST_F(JournalManagerTest, TruncateJournalToCheckpoint)
     EXPECT_EQ(*lastCheckpoint, checkpoint2);
 }
 
+// TODO: тест рабочий, но пока отключаем его, чтобы сильно не изнашивать диск
 // Тест с очень большими данными
-TEST_F(JournalManagerTest, LargeData)
-{
-    const auto journalPath = getTestJournalPath();
-    JournalManager journal(journalPath);
+// TEST_F(JournalManagerTest, LargeData)
+// {
+//     const auto journalPath = getTestJournalPath();
+//     JournalManager journal(journalPath);
 
-    // Создаем большую строку данных
-    const auto largeData = generateLargeString();
-    constexpr size_t INSERT_COUNT = 100;
-    for (size_t i = 0; i < INSERT_COUNT; i++) {
-        const std::string uuid = "large_data_uuid_" + std::to_string(i);
-        EXPECT_TRUE(journal.writeInsert(uuid, largeData));
-    }
-    // В итоге получаем файл размером 1 Гб
+//     // Создаем большую строку данных
+//     const auto largeData = generateLargeString();
+//     constexpr size_t INSERT_COUNT = 100;
+//     for (size_t i = 0; i < INSERT_COUNT; i++) {
+//         const std::string uuid = "large_data_uuid_" + std::to_string(i);
+//         EXPECT_TRUE(journal.writeInsert(uuid, largeData));
+//     }
+//     // В итоге получаем файл размером 1 Гб
 
-    // Воспроизводим операции
-    std::unordered_map<std::string, std::string> dataStore;
-    EXPECT_TRUE(journal.replayJournal(dataStore));
+//     // Воспроизводим операции
+//     std::unordered_map<std::string, std::string> dataStore;
+//     EXPECT_TRUE(journal.replayJournal(dataStore));
 
-    // Проверяем, что большие данные восстановлены корректно
-    EXPECT_EQ(dataStore.size(), INSERT_COUNT);
-    for (size_t i = 0; i < INSERT_COUNT; i++) {
-        const std::string uuid = "large_data_uuid_" + std::to_string(i);
-        ASSERT_TRUE(dataStore.find(uuid) != dataStore.end());
-        EXPECT_EQ(dataStore[uuid], largeData);
-    }
-}
+//     // Проверяем, что большие данные восстановлены корректно
+//     EXPECT_EQ(dataStore.size(), INSERT_COUNT);
+//     for (size_t i = 0; i < INSERT_COUNT; i++) {
+//         const std::string uuid = "large_data_uuid_" + std::to_string(i);
+//         ASSERT_TRUE(dataStore.find(uuid) != dataStore.end());
+//         EXPECT_EQ(dataStore[uuid], largeData);
+//     }
+// }
 
 // Тест с пустыми данными
 TEST_F(JournalManagerTest, EmptyData)
