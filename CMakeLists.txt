@@ -50,6 +50,17 @@ if(NOT (OCTET_BUILD_SHARED_LIB OR OCTET_BUILD_STATIC_LIB))
     message(FATAL_ERROR "At least one of BUILD_STATIC_LIB or BUILD_SHARED_LIB must be ON.")
 endif()
 
+# Указание заголовочных файлов
+set(OCTET_HEADERS
+    include/storage/journal_manager.hpp
+    include/storage/uuid_generator.hpp
+    include/utils/compiler.hpp
+    include/utils/file_lock_guard.hpp
+    include/utils/file_utils.hpp
+    include/utils/logger.hpp
+    # TODO
+)
+
 # Указание источников
 set(OCTET_SOURCES
     src/storage/journal_manager.cpp
@@ -67,7 +78,7 @@ set(OCTET_BASENAME "octet")
 
 # Функция для создания библиотеки (динамическая/статическая)
 function(add_octet_library type libname)
-add_library(${libname} ${type} ${OCTET_SOURCES})
+add_library(${libname} ${type} ${OCTET_SOURCES} ${OCTET_HEADERS})
     set_target_properties(${libname} PROPERTIES OUTPUT_NAME ${OCTET_BASENAME}
                                                 # Настройки для, в основном, Debug-сборки
                                                 LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib
