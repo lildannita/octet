@@ -53,22 +53,22 @@ endif()
 # Указание заголовочных файлов
 set(OCTET_HEADERS
     include/storage/journal_manager.hpp
+    include/storage/storage_manager.hpp
     include/storage/uuid_generator.hpp
     include/utils/compiler.hpp
     include/utils/file_lock_guard.hpp
     include/utils/file_utils.hpp
     include/utils/logger.hpp
-    # TODO
 )
 
 # Указание источников
 set(OCTET_SOURCES
     src/storage/journal_manager.cpp
+    src/storage/storage_manager.cpp
     src/storage/uuid_generator.cpp
     src/utils/file_lock_guard.cpp
     src/utils/file_utils.cpp
     src/utils/logger.cpp
-    # TODO
 )
 
 # Для подключения заголовков
