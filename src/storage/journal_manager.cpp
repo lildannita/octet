@@ -179,6 +179,10 @@ std::string JournalEntry::serialize() const
 {
     std::ostringstream oss;
     // Формат: TYPE|GUID|TIMESTAMP|DATA
+    // TODO: нужно решить, что все-таки делать с UUID:
+    // 1)  Разрешить любые UUID и экранировать их
+    // 2)  Разрешить любые UUID и не экранировать их, а выкидывать исключение
+    // 3)  Разрешить только UUID получаемые через генератор
     oss << operationTypeToString(type_) << FIELD_SEPARATOR << uuid_ << FIELD_SEPARATOR << timestamp_
         << FIELD_SEPARATOR << escapeString(data_) << "\n";
     return oss.str();
@@ -186,22 +190,34 @@ std::string JournalEntry::serialize() const
 
 std::optional<JournalEntry> JournalEntry::deserialize(const std::string &line)
 {
-    // Регулярное выражение для проверки формата строки журнала
-    // Формат: TYPE|GUID|TIMESTAMP|DATA (где DATA может быть пустым)
-    static const std::regex JOURNAL_ENTRY_REGEX(
-        R"(^(INSERT|UPDATE|REMOVE|CHECKPOINT)\|([^|]+)\|([^|]+)\|(.*)$)");
-    std::smatch matches;
-    if (!std::regex_match(line, matches, JOURNAL_ENTRY_REGEX)) {
+    // Ищем индексы первых трех разделителей
+    constexpr uint8_t FIELD_SEPARATOR_COUNT = 3;
+    std::array<size_t, FIELD_SEPARATOR_COUNT> separators;
+    uint8_t separatorCount = 0;
+
+    for (size_t i = 0; i < line.size() && separatorCount < FIELD_SEPARATOR_COUNT; i++) {
+        if (line[i] == FIELD_SEPARATOR) {
+            separators[separatorCount++] = i;
+        }
+    }
+
+    // Проверяем, что нашли все три разделителя
+    if (separatorCount != FIELD_SEPARATOR_COUNT) {
         return std::nullopt;
     }
-    const auto type = stringToOperationType(matches[1]);
+
+    std::string_view typeView(line.c_str(), separators[0]);
+    std::string_view uuidView(line.c_str() + separators[0] + 1, separators[1] - separators[0] - 1);
+    std::string_view timestampView(line.c_str() + separators[1] + 1,
+                                   separators[2] - separators[1] - 1);
+
+    // Проверяем тип операции до извлечения данных
+    const auto type = stringToOperationType(std::string(typeView));
     if (!type.has_value()) {
         return std::nullopt;
     }
-    const auto uuid = matches[2];
-    const auto timestamp = matches[3];
-    const auto data = unescapeString(matches[4]);
-    return JournalEntry(*type, uuid, data, timestamp);
+    const std::string data = unescapeString(line.substr(separators[2] + 1));
+    return JournalEntry(*type, std::string(uuidView), std::move(data), std::string(timestampView));
 }
 
 JournalManager::JournalManager(const std::filesystem::path &journalPath)
@@ -473,24 +489,14 @@ bool JournalManager::truncateJournalToCheckpoint(const std::string &checkpointId
         return false;
     }
 
-    // Ищем индекс нужной контрольной точки
-    std::optional<size_t> checkpointIndex = std::nullopt;
-    for (size_t i = 0; i < allEntries.size(); i++) {
-        const auto &entry = allEntries[i];
-        if (entry.type() == OperationType::CHECKPOINT && entry.uuid() == checkpointId) {
-            checkpointIndex = i;
-            break;
-        }
-    }
-
-    if (!checkpointIndex.has_value()) {
+    // Если записей нет (при том, что первая запись обязательно должна быть контрольной точкой),
+    // значит контрольная точка не найдена
+    if (allEntries.size() == 0) {
         LOG_ERROR << "Контрольная точка не найдена в журнале: " << journalFilePath_.string()
                   << ", точка = " << checkpointId;
         return false;
     }
-
-    // Очищаем все элементы в векторе до найденной контрольной точки (не включительно)
-    allEntries.erase(allEntries.begin(), allEntries.begin() + *checkpointIndex);
+    assert(allEntries[0].uuid() == checkpointId);
 
     // Перезаписываем журнал
     if (!rewriteJournal(allEntries)) {
@@ -498,8 +504,7 @@ bool JournalManager::truncateJournalToCheckpoint(const std::string &checkpointId
         return false;
     }
 
-    LOG_INFO << "Журнал успешно очищен: " << journalFilePath_.string() << ", удалено "
-             << *checkpointIndex << " записей";
+    LOG_INFO << "Журнал успешно очищен: " << journalFilePath_.string();
     return true;
 }
 
@@ -653,7 +658,9 @@ bool JournalManager::readAllEntriesFrom(const std::optional<std::string> &checkp
                     assert(foundCheckpoint == false);
                     foundCheckpoint = true;
                 }
-                continue;
+                else {
+                    continue;
+                }
             }
 
             // Пропускаем операции до нахождения контрольной точки
