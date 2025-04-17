@@ -62,6 +62,16 @@ std::string generateRandomId(size_t length)
     return result;
 }
 
+std::string generateLargeString(size_t size)
+{
+    std::string result(size, 'X');
+    for (size_t i = 0; i < size; i += 1024) {
+        size_t pos = i % 26;
+        result[i] = static_cast<char>('A' + pos);
+    }
+    return result;
+}
+
 std::filesystem::path createTmpDirectory(std::string_view suffix)
 {
     const auto systemTmpDir = std::filesystem::temp_directory_path();

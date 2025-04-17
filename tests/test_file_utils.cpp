@@ -21,7 +21,6 @@
 namespace {
 static constexpr size_t CONCURRENT_THREADS = 10;
 static constexpr size_t CONCURRENT_OPERATIONS = 20;
-static constexpr size_t LARGE_FILE_SIZE = 10 * 1024 * 1024; // 10 МБ
 static constexpr size_t THREAD_START_TIMEOUT_MS = 100;
 } // namespace
 
@@ -97,21 +96,6 @@ protected:
         file.close();
 
         return content;
-    }
-
-    /**
-     * @brief Генерирует строку указанного размера
-     * @param size Размер генерируемой строки
-     * @return Сгенерированная строка
-     */
-    static std::string generateLargeString(size_t size = LARGE_FILE_SIZE)
-    {
-        std::string result(size, 'X');
-        for (size_t i = 0; i < size; i += 1024) {
-            size_t pos = i % 26;
-            result[i] = static_cast<char>('A' + pos);
-        }
-        return result;
     }
 
     /**
@@ -242,6 +226,9 @@ TEST_F(FileUtilsTest, EnsureRestrictedAccessDirectoryExists)
     // Восстанавливаем права для очистки
     std::filesystem::permissions(dirPath, std::filesystem::perms::owner_all,
                                  std::filesystem::perm_options::add);
+#else
+    GTEST_SKIP()
+        << "Пропускаем, так как тест требует возможности изменения прав доступа к директории";
 #endif
 }
 
@@ -647,6 +634,9 @@ TEST_F(FileUtilsTest, SafeFileReadNoPermission)
     // Восстанавливаем права для очистки
     std::filesystem::permissions(filePath, std::filesystem::perms::owner_all,
                                  std::filesystem::perm_options::add);
+#else
+    GTEST_SKIP()
+        << "Пропускаем, так как тест требует возможности изменения прав доступа к директории";
 #endif
 }
 
@@ -698,6 +688,9 @@ TEST_F(FileUtilsTest, IsFileReadableNoPermission)
     // Восстанавливаем права для очистки
     std::filesystem::permissions(filePath, std::filesystem::perms::owner_all,
                                  std::filesystem::perm_options::add);
+#else
+    GTEST_SKIP()
+        << "Пропускаем, так как тест требует возможности изменения прав доступа к директории";
 #endif
 }
 
@@ -1136,6 +1129,9 @@ TEST_F(FileUtilsTest, CreateFileBackupNoReadPermission)
     // Восстанавливаем права для очистки
     std::filesystem::permissions(filePath, std::filesystem::perms::owner_all,
                                  std::filesystem::perm_options::add);
+#else
+    GTEST_SKIP()
+        << "Пропускаем, так как тест требует возможности изменения прав доступа к директории";
 #endif
 }
 
@@ -1163,6 +1159,9 @@ TEST_F(FileUtilsTest, CreateFileBackupNoWritePermission)
     // Восстанавливаем права для очистки
     std::filesystem::permissions(restrictedDir, std::filesystem::perms::owner_all,
                                  std::filesystem::perm_options::add);
+#else
+    GTEST_SKIP()
+        << "Пропускаем, так как тест требует возможности изменения прав доступа к директории";
 #endif
 }
 

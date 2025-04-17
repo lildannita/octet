@@ -2,6 +2,8 @@
 #include <string>
 
 namespace octet::tests {
+static constexpr size_t LARGE_FILE_SIZE = 10 * 1024 * 1024; // 10 МБ
+
 /**
  * @brief Генерирует случайное целое число в заданном диапазоне
  * @param min Минимальное значение
@@ -16,6 +18,13 @@ int getRandomInt(int min, int max);
  * @return Результат генерации
  */
 std::string generateRandomId(size_t length);
+
+/**
+ * @brief Генерирует строку указанного размера
+ * @param size Размер генерируемой строки
+ * @return Сгенерированная строка
+ */
+std::string generateLargeString(size_t size = LARGE_FILE_SIZE);
 
 /**
  * @brief Создает временную директорию
