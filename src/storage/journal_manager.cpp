@@ -30,10 +30,22 @@ std::string escapeString(const std::string &str)
 {
     std::ostringstream result;
     for (char c : str) {
-        if (c == FIELD_SEPARATOR || c == ESCAPE_CHAR || c == '\n' || c == '\r') {
-            result << ESCAPE_CHAR;
+        if (c == FIELD_SEPARATOR || c == ESCAPE_CHAR) {
+            // Обычное экранирование для разделителей и экранирующих символов
+            result << ESCAPE_CHAR << c;
         }
-        result << c;
+        else if (c == '\n') {
+            // Заменяем символ новой строки на строковое представление "\n"
+            result << ESCAPE_CHAR << 'n';
+        }
+        else if (c == '\r') {
+            // Заменяем символ возврата каретки на строковое представление "\r"
+            result << ESCAPE_CHAR << 'r';
+        }
+        else {
+            // Обычные символы просто копируем
+            result << c;
+        }
     }
     return result.str();
 }
@@ -49,7 +61,18 @@ std::string unescapeString(const std::string &str)
     bool escaped = false;
     for (char c : str) {
         if (escaped) {
-            result << c;
+            if (c == 'n') {
+                // Преобразуем "\n" обратно в символ новой строки
+                result << '\n';
+            }
+            else if (c == 'r') {
+                // Преобразуем "\r" обратно в символ возврата каретки
+                result << '\r';
+            }
+            else {
+                // Все остальные экранированные символы добавляем как есть
+                result << c;
+            }
             escaped = false;
         }
         else if (c == ESCAPE_CHAR) {
