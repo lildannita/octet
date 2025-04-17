@@ -767,6 +767,7 @@ TEST_F(JournalManagerTest, ConcurrentWriteAndRead)
                                                                 &waitingStart]() {
             // Ждем разрешения начать работу
             while (waitingStart.load()) {
+                std::this_thread::yield();
             }
 
             size_t successCount = 0;
@@ -790,6 +791,7 @@ TEST_F(JournalManagerTest, ConcurrentWriteAndRead)
         readerFutures.push_back(std::async(std::launch::async, [&journal, &waitingStart]() {
             // Ждем разрешения начать работу
             while (waitingStart.load()) {
+                std::this_thread::yield();
             }
 
             size_t readCount = 0;
