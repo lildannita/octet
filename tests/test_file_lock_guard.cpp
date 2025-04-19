@@ -5,15 +5,12 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
-#include <random>
 #include <atomic>
 #include <mutex>
 
 #include "testing_utils.hpp"
 #include "utils/compiler.hpp"
 #include "utils/file_lock_guard.hpp"
-#include "utils/file_utils.hpp"
-#include "utils/logger.hpp"
 
 namespace {
 static constexpr uint8_t THREAD_START_TIMEOUT_MS = 100;
@@ -132,7 +129,9 @@ TEST_F(FileLockGuardTest, LockTestExplicitRelease)
 // Проверка работы различных режимов блокировки
 TEST_F(FileLockGuardTest, LockTestModes)
 {
-    const auto [filePath, lockPath] = getTestAndLockPaths();
+    const auto paths = getTestAndLockPaths();
+    const auto &filePath = paths.first;
+    const auto &lockPath = paths.second;
     createTestFile(filePath);
 
     // Тест EXCLUSIVE блокировки в одном и том же потоке
@@ -232,7 +231,9 @@ TEST_F(FileLockGuardTest, LockTestModes)
 // Проверка работы различных стратегий ожидания
 TEST_F(FileLockGuardTest, LockTestWaitStrategies)
 {
-    const auto [filePath, lockPath] = getTestAndLockPaths();
+    const auto paths = getTestAndLockPaths();
+    const auto &filePath = paths.first;
+    const auto &lockPath = paths.second;
     createTestFile(filePath);
 
     // Для INSTANTLY стратегии достаточно проверок в LockTestModes тесте
@@ -412,7 +413,9 @@ TEST_F(FileLockGuardTest, LockTestCreatableDirectory)
 // Проверка, что несколько потоков корректно конкурируют за эксклюзивную блокировку
 TEST_F(FileLockGuardTest, LockTestSimpleConcurrent)
 {
-    const auto [filePath, lockPath] = getTestAndLockPaths();
+    const auto paths = getTestAndLockPaths();
+    const auto &filePath = paths.first;
+    const auto &lockPath = paths.second;
     createTestFile(filePath);
 
     constexpr size_t THREAD_COUNT = 20;
@@ -448,7 +451,9 @@ TEST_F(FileLockGuardTest, LockTestSimpleConcurrent)
 // Проверка, что несколько потоков корректно конкурируют за разделяемые и эксклюзивные блокировки
 TEST_F(FileLockGuardTest, LockTestSimpleConcurrentWithShared)
 {
-    const auto [filePath, lockPath] = getTestAndLockPaths();
+    const auto paths = getTestAndLockPaths();
+    const auto &filePath = paths.first;
+    const auto &lockPath = paths.second;
     createTestFile(filePath);
 
     constexpr size_t SHARED_THREAD_COUNT = 10;
@@ -505,7 +510,9 @@ TEST_F(FileLockGuardTest, LockTestSimpleConcurrentWithShared)
 // Проверяем работу блокировки в нескольких потоках со случайными режимами и задержками
 TEST_F(FileLockGuardTest, LockTestRandomParams)
 {
-    const auto [filePath, lockPath] = getTestAndLockPaths();
+    const auto paths = getTestAndLockPaths();
+    const auto &filePath = paths.first;
+    const auto &lockPath = paths.second;
     createTestFile(filePath);
 
     constexpr size_t THREAD_COUNT = 20;
@@ -597,7 +604,9 @@ TEST_F(FileLockGuardTest, LockTestRandomParams)
 // (это должно быть имитацией нормальной работы, поэтому просто проверяем, что ничего не падает)
 TEST_F(FileLockGuardTest, LockTestRandomLockUnlock)
 {
-    const auto [filePath, lockPath] = getTestAndLockPaths();
+    const auto paths = getTestAndLockPaths();
+    const auto &filePath = paths.first;
+    const auto &lockPath = paths.second;
     createTestFile(filePath);
 
     constexpr size_t NUM_THREADS = 8;
@@ -723,7 +732,7 @@ TEST_F(FileLockGuardTest, LockTestMultipleFilesStress)
     EXPECT_GT(successCount, 0);
 
     // Проверяем, что все файлы блокировок удалены
-    for (const auto currentPaths : paths) {
+    for (const auto &currentPaths : paths) {
         EXPECT_FALSE(std::filesystem::exists(currentPaths.second));
     }
 }
@@ -731,7 +740,9 @@ TEST_F(FileLockGuardTest, LockTestMultipleFilesStress)
 // Проверка освобождения блокировки другим потоком
 TEST_F(FileLockGuardTest, LockTestReleaseFromOtherThread)
 {
-    const auto [filePath, lockPath] = getTestAndLockPaths();
+    const auto paths = getTestAndLockPaths();
+    const auto &filePath = paths.first;
+    const auto &lockPath = paths.second;
     createTestFile(filePath);
 
     // Получаем блокировку в текущем потоке
