@@ -1,22 +1,18 @@
 #include <gtest/gtest.h>
-#include <thread>
-#include <future>
-#include <vector>
+#include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
-#include <random>
-#include <atomic>
+#include <future>
 #include <mutex>
-#include <algorithm>
-#include <unordered_set>
+#include <random>
+#include <thread>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
-#include "testing_utils.hpp"
-#include "utils/compiler.hpp"
 #include "utils/file_utils.hpp"
-#include "utils/file_lock_guard.hpp"
-#include "utils/logger.hpp"
+#include "testing_utils.hpp"
 
 namespace {
 static constexpr size_t CONCURRENT_THREADS = 10;

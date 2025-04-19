@@ -1,25 +1,17 @@
 #include <gtest/gtest.h>
-#include <thread>
-#include <future>
-#include <vector>
+#include <atomic>
 #include <chrono>
 #include <filesystem>
-#include <fstream>
-#include <random>
-#include <atomic>
+#include <future>
 #include <mutex>
-#include <algorithm>
-#include <unordered_set>
+#include <thread>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
-#include "testing_utils.hpp"
-#include "utils/compiler.hpp"
-#include "utils/file_utils.hpp"
-#include "utils/file_lock_guard.hpp"
-#include "utils/logger.hpp"
 #include "storage/storage_manager.hpp"
-#include "storage/journal_manager.hpp"
-#include "storage/uuid_generator.hpp"
+#include "utils/file_utils.hpp"
+#include "testing_utils.hpp"
 
 namespace {
 static constexpr char SNAPSHOT_FILE_NAME[] = "octet-data.snapshot";

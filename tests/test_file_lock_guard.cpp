@@ -1,16 +1,16 @@
 #include <gtest/gtest.h>
-#include <thread>
-#include <future>
-#include <vector>
+#include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
-#include <atomic>
+#include <future>
 #include <mutex>
+#include <thread>
+#include <vector>
 
-#include "testing_utils.hpp"
 #include "utils/compiler.hpp"
 #include "utils/file_lock_guard.hpp"
+#include "testing_utils.hpp"
 
 namespace {
 static constexpr uint8_t THREAD_START_TIMEOUT_MS = 100;

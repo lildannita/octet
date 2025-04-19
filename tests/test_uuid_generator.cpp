@@ -1,14 +1,12 @@
 #include <gtest/gtest.h>
-#include <unordered_set>
-#include <thread>
-#include <future>
-#include <vector>
 #include <cctype>
+#include <future>
+#include <unordered_set>
+#include <vector>
 
 #include "storage/uuid_generator.hpp"
 
 namespace octet::tests {
-
 class UuidGeneratorTest : public ::testing::Test {
 protected:
     UuidGenerator generator;

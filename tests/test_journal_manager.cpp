@@ -1,24 +1,16 @@
 #include <gtest/gtest.h>
-#include <thread>
-#include <future>
-#include <vector>
+#include <atomic>
 #include <chrono>
 #include <filesystem>
-#include <fstream>
-#include <random>
-#include <atomic>
-#include <mutex>
-#include <algorithm>
-#include <unordered_set>
+#include <future>
+#include <thread>
 #include <unordered_map>
+#include <vector>
 
-#include "testing_utils.hpp"
-#include "utils/compiler.hpp"
-#include "utils/file_utils.hpp"
-#include "utils/file_lock_guard.hpp"
-#include "utils/logger.hpp"
 #include "storage/journal_manager.hpp"
-#include "utils/compiler.hpp"
+// #include "utils/compiler.hpp"
+#include "utils/file_utils.hpp"
+#include "testing_utils.hpp"
 
 namespace octet::tests {
 class JournalManagerTest : public ::testing::Test {
