@@ -14,8 +14,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# TODO: При разработке CLI расскоментировать
 # Поиск необходимых библиотек
-find_package(Boost REQUIRED COMPONENTS system)
+# find_package(Boost REQUIRED COMPONENTS system)
 
 # Опции сборки
 option(OCTET_BUILD_SHARED_LIB "Build shared version of the library" ON)
@@ -83,8 +84,7 @@ add_library(${libname} ${type} ${OCTET_SOURCES} ${OCTET_HEADERS})
                                                 # Настройки для, в основном, Debug-сборки
                                                 LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib
                                                 ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
-    target_link_libraries(${libname} PRIVATE octet_platform
-                                             Boost::system)
+    target_link_libraries(${libname} PRIVATE octet_platform)
     target_include_directories(${libname} PRIVATE ${OCTET_INCLUDE_DIR})
 endfunction(add_octet_library)
 
