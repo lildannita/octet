@@ -10,8 +10,8 @@
 #include <thread>
 #include <unordered_map>
 
-#include "storage/journal_manager.hpp"
-#include "storage/uuid_generator.hpp"
+#include "journal_manager.hpp"
+#include "uuid_generator.hpp"
 
 namespace octet {
 /**
