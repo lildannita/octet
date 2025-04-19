@@ -3,7 +3,6 @@ option(OCTET_COVERAGE "Enable test coverage analysis" OFF)
 
 # Поиск необходимых библиотек
 find_package(GTest REQUIRED)
-find_package(Threads REQUIRED)
 
 # Проверка, что обе библиотеки собраны
 if(NOT (TARGET octet_static AND TARGET octet_shared))

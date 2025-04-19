@@ -16,8 +16,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Подключаем модуль с переменными для стандартных путей установки
 include(GNUInstallDirs)
 
-# TODO: При разработке CLI расскоментировать
+
 # Поиск необходимых библиотек
+find_package(Threads REQUIRED)
+# TODO: При разработке CLI расскоментировать
 # find_package(Boost REQUIRED COMPONENTS system)
 
 # Опции сборки
