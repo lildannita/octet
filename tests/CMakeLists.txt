@@ -101,6 +101,7 @@ if(OCTET_COVERAGE)
         --exclude='.*bits/.*'
         --exclude-throw-branches
         --exclude-unreachable-branches
+        --gcov-ignore-parse-errors negative_hits.warn
     )
 
     # Общая функция для создания цели покрытия
