@@ -421,11 +421,27 @@ void StorageManager::setSnapshotOperationsThreshold(size_t threshold)
 {
     snapshotOperationsThreshold_ = threshold;
     LOG_INFO << "Установлен новый порог операций для снапшота: " << threshold;
+    // Если после обновления достигли порога - запрашиваем снапшот
+    if (operationsSinceLastSnapshot_ >= snapshotOperationsThreshold_) {
+        LOG_DEBUG << "Достигнут порог операций (" << operationsSinceLastSnapshot_
+                  << "), запрашиваем снапшот";
+        requestSnapshotAsync();
+    }
 }
 
 void StorageManager::setSnapshotTimeThreshold(size_t minutes)
 {
     snapshotTimeThresholdMinutes_ = minutes;
     LOG_INFO << "Установлен новый временной интервал для снапшота: " << minutes << " минут";
+    // Если после обновления достигли таймаута - запрашиваем снапшот
+    const auto now = std::chrono::steady_clock::now();
+    const auto timeSinceLastSnapshot
+        = std::chrono::duration_cast<std::chrono::minutes>(now - lastSnapshotTime_);
+    const auto timeElapsed
+        = timeSinceLastSnapshot.count() >= static_cast<int64_t>(snapshotTimeThresholdMinutes_);
+    if (timeElapsed && operationsSinceLastSnapshot_ > 0) {
+        LOG_DEBUG << "Достигнут таймаут ожидания снапшота, запрашиваем снапшот";
+        requestSnapshotAsync();
+    }
 }
 } // namespace octet
