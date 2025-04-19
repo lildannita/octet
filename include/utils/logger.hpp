@@ -1,11 +1,10 @@
 #pragma once
 
+#include <filesystem>
+#include <mutex>
+#include <optional>
 #include <string>
 #include <string_view>
-#include <sstream>
-#include <filesystem>
-#include <optional>
-#include <mutex>
 
 namespace octet::utils {
 /**

@@ -1,18 +1,17 @@
 #pragma once
 
-#include <filesystem>
-#include <string>
-#include <unordered_map>
-#include <shared_mutex>
 #include <atomic>
 #include <chrono>
-#include <thread>
 #include <condition_variable>
+#include <filesystem>
 #include <optional>
+#include <shared_mutex>
+#include <string>
+#include <thread>
+#include <unordered_map>
 
 #include "storage/journal_manager.hpp"
 #include "storage/uuid_generator.hpp"
-#include "utils/logger.hpp"
 
 namespace octet {
 /**

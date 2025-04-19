@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdlib>
+
 #include "logger.hpp"
 
 #if defined(__GNUC__) || defined(__clang__)

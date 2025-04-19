@@ -1,25 +1,26 @@
 #include "utils/file_utils.hpp"
 
 #include <cassert>
-#include <cstdio>
 #include <chrono>
+#include <cstdio>
 #include <fstream>
 #include <random>
-#include <thread>
 #include <system_error>
+#include <thread>
 
 #if defined(OCTET_PLATFORM_UNIX)
-#include <unistd.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 #elif defined(OCTET_PLATFORM_WINDOWS)
-#include <windows.h>
-#include <io.h>
 #include <fcntl.h>
+#include <io.h>
+#include <windows.h>
+#else
+#include "utils/compiler.hpp"
 #endif
 
-#include "utils/compiler.hpp"
 #include "utils/logger.hpp"
 #include "utils/file_lock_guard.hpp"
 

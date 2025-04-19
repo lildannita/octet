@@ -1,9 +1,8 @@
 #include "storage/journal_manager.hpp"
 
+#include <array>
 #include <cassert>
 #include <chrono>
-#include <array>
-#include <regex>
 
 #include "utils/compiler.hpp"
 #include "utils/file_lock_guard.hpp"

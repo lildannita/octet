@@ -1,8 +1,8 @@
 #pragma once
 
-#include <string>
 #include <atomic>
 #include <random>
+#include <string>
 
 namespace octet {
 /**
