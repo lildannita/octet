@@ -1,0 +1,17 @@
+set(OCTET_MANIFEST "@CMAKE_BINARY_DIR@/install_manifest.txt")
+
+if(NOT EXISTS "${OCTET_MANIFEST}")
+    message(FATAL_ERROR "install_manifest.txt not found at @CMAKE_INSTALL_PREFIX@ — nothing to uninstall.")
+endif()
+
+# Читаем все пути из manifest
+file(STRINGS "${OCTET_MANIFEST}" files)
+
+foreach(_file ${files})
+    if(EXISTS "${_file}")
+        message(STATUS "Removing ${_file}...")
+        file(REMOVE "${_file}")
+    else()
+        message(WARNING "File '${_file}' not found. It may have already been deleted.")
+    endif()
+endforeach()

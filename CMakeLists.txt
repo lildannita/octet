@@ -154,6 +154,13 @@ if(OCTET_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
+# Генерируем скрипт удаления библиотеки с системы
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/octet-uninstall.cmake.in"
+    "${CMAKE_BINARY_DIR}/octet-uninstall.cmake"
+    @ONLY
+)
+
 # Настройка установки
 include(CMakePackageConfigHelpers)
 
