@@ -1,7 +1,7 @@
 #include "storage/storage_manager.hpp"
 
 #include "utils/file_utils.hpp"
-#include "utils/logger.hpp"
+#include "logger.hpp"
 
 namespace {
 static constexpr char SNAPSHOT_FILE_NAME[] = "octet-data.snapshot";

@@ -5,7 +5,7 @@
 #include <random>
 #include <unordered_set>
 
-#include "utils/logger.hpp"
+#include "logger.hpp"
 
 namespace {
 // Мьютекс для безопасного доступа к контейнеру из нескольких потоков

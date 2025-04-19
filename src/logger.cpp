@@ -1,4 +1,4 @@
-#include "utils/logger.hpp"
+#include "logger.hpp"
 
 #include <chrono>
 #include <cstring>
@@ -71,7 +71,7 @@ constexpr const char *MAGENTA = "\033[35m"; // Пурпурный (для кри
 constexpr const char *CYAN = "\033[36m"; // Голубой (для трассировки)
 } // namespace ConsoleColor
 
-namespace octet::utils {
+namespace octet {
 std::string errnoToString(int errnum)
 {
     char buffer[128] = { 0 };
@@ -392,4 +392,4 @@ LogStream::~LogStream()
     Logger::getInstance().log(level_, stream_.str(), file_, line_);
 }
 
-} // namespace octet::utils
+} // namespace octet

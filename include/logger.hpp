@@ -6,7 +6,7 @@
 #include <string>
 #include <string_view>
 
-namespace octet::utils {
+namespace octet {
 /**
  * @brief Потокобезопасное преобразование кода ошибки в строковое описание
  * @return Строковое описание ошибки
@@ -191,46 +191,46 @@ private:
     int line_; // Номер строки
 };
 
-} // namespace octet::utils
+} // namespace octet
 
 // Макросы для условного логирования
 // TODO: В теории, можно сделать еще эффективнее: настраивать логирование на уровне сборки,
 // а тут проверять флаги. Но насколько это будет удобнее - вопрос...
 #define LOG_TRACE_ENABLED                                                                          \
-    (octet::utils::Logger::getInstance().isEnabled()                                               \
-     && octet::utils::Logger::getInstance().getMinLogLevel() <= octet::utils::LogLevel::TRACE)
+    (octet::Logger::getInstance().isEnabled()                                                      \
+     && octet::Logger::getInstance().getMinLogLevel() <= octet::LogLevel::TRACE)
 #define LOG_DEBUG_ENABLED                                                                          \
-    (octet::utils::Logger::getInstance().isEnabled()                                               \
-     && octet::utils::Logger::getInstance().getMinLogLevel() <= octet::utils::LogLevel::DEBUG)
+    (octet::Logger::getInstance().isEnabled()                                                      \
+     && octet::Logger::getInstance().getMinLogLevel() <= octet::LogLevel::DEBUG)
 #define LOG_INFO_ENABLED                                                                           \
-    (octet::utils::Logger::getInstance().isEnabled()                                               \
-     && octet::utils::Logger::getInstance().getMinLogLevel() <= octet::utils::LogLevel::INFO)
+    (octet::Logger::getInstance().isEnabled()                                                      \
+     && octet::Logger::getInstance().getMinLogLevel() <= octet::LogLevel::INFO)
 #define LOG_WARNING_ENABLED                                                                        \
-    (octet::utils::Logger::getInstance().isEnabled()                                               \
-     && octet::utils::Logger::getInstance().getMinLogLevel() <= octet::utils::LogLevel::WARNING)
+    (octet::Logger::getInstance().isEnabled()                                                      \
+     && octet::Logger::getInstance().getMinLogLevel() <= octet::LogLevel::WARNING)
 #define LOG_ERROR_ENABLED                                                                          \
-    (octet::utils::Logger::getInstance().isEnabled()                                               \
-     && octet::utils::Logger::getInstance().getMinLogLevel() <= octet::utils::LogLevel::ERROR)
+    (octet::Logger::getInstance().isEnabled()                                                      \
+     && octet::Logger::getInstance().getMinLogLevel() <= octet::LogLevel::ERROR)
 #define LOG_CRITICAL_ENABLED                                                                       \
-    (octet::utils::Logger::getInstance().isEnabled()                                               \
-     && octet::utils::Logger::getInstance().getMinLogLevel() <= octet::utils::LogLevel::CRITICAL)
+    (octet::Logger::getInstance().isEnabled()                                                      \
+     && octet::Logger::getInstance().getMinLogLevel() <= octet::LogLevel::CRITICAL)
 
 // Макросы для удобного логирования с автоматическим указанием файла и строки
 #define LOG_TRACE                                                                                  \
     if (LOG_TRACE_ENABLED)                                                                         \
-    octet::utils::LogStream(octet::utils::LogLevel::TRACE, __FILE__, __LINE__)
+    octet::LogStream(octet::LogLevel::TRACE, __FILE__, __LINE__)
 #define LOG_DEBUG                                                                                  \
     if (LOG_DEBUG_ENABLED)                                                                         \
-    octet::utils::LogStream(octet::utils::LogLevel::DEBUG, __FILE__, __LINE__)
+    octet::LogStream(octet::LogLevel::DEBUG, __FILE__, __LINE__)
 #define LOG_INFO                                                                                   \
     if (LOG_INFO_ENABLED)                                                                          \
-    octet::utils::LogStream(octet::utils::LogLevel::INFO, __FILE__, __LINE__)
+    octet::LogStream(octet::LogLevel::INFO, __FILE__, __LINE__)
 #define LOG_WARNING                                                                                \
     if (LOG_WARNING_ENABLED)                                                                       \
-    octet::utils::LogStream(octet::utils::LogLevel::WARNING, __FILE__, __LINE__)
+    octet::LogStream(octet::LogLevel::WARNING, __FILE__, __LINE__)
 #define LOG_ERROR                                                                                  \
     if (LOG_ERROR_ENABLED)                                                                         \
-    octet::utils::LogStream(octet::utils::LogLevel::ERROR, __FILE__, __LINE__)
+    octet::LogStream(octet::LogLevel::ERROR, __FILE__, __LINE__)
 #define LOG_CRITICAL                                                                               \
     if (LOG_CRITICAL_ENABLED)                                                                      \
-    octet::utils::LogStream(octet::utils::LogLevel::CRITICAL, __FILE__, __LINE__)
+    octet::LogStream(octet::LogLevel::CRITICAL, __FILE__, __LINE__)

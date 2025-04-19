@@ -7,7 +7,7 @@
 #include "utils/compiler.hpp"
 #include "utils/file_lock_guard.hpp"
 #include "utils/file_utils.hpp"
-#include "utils/logger.hpp"
+#include "logger.hpp"
 
 namespace {
 // Константы для форматирования журнала

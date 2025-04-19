@@ -21,8 +21,8 @@
 #include "utils/compiler.hpp"
 #endif
 
-#include "utils/logger.hpp"
 #include "utils/file_lock_guard.hpp"
+#include "logger.hpp"
 
 namespace {
 // Проверка существовании директории по указанному пути
@@ -118,7 +118,7 @@ bool syncDirectory(const std::filesystem::path &dir)
     const auto fd = open(dir.c_str(), O_RDONLY);
     if (fd == -1) {
         LOG_ERROR << "Не удалось открыть директорию для синхронизации: " << dir.string()
-                  << ", ошибка: " << octet::utils::errnoToString(errno);
+                  << ", ошибка: " << octet::errnoToString(errno);
         return false;
     }
 
@@ -126,7 +126,7 @@ bool syncDirectory(const std::filesystem::path &dir)
     close(fd);
     if (!success) {
         LOG_ERROR << "Ошибка синхронизации директории: " << dir.string()
-                  << ", ошибка: " << octet::utils::errnoToString(errno);
+                  << ", ошибка: " << octet::errnoToString(errno);
     }
     return success;
 #elif defined(OCTET_PLATFORM_WINDOWS)
@@ -143,7 +143,7 @@ bool syncDirectory(const std::filesystem::path &dir)
     // Проверка, получилось ли открыть дескриптор
     if (hDir == INVALID_HANDLE_VALUE) {
         LOG_ERROR << "Не удалось открыть директорию для синхронизации: " << dir.string()
-                  << ", ошибка: " << octet::utils::errnoToString(errno);
+                  << ", ошибка: " << octet::errnoToString(errno);
         return false;
     }
 

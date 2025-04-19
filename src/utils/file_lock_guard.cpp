@@ -26,7 +26,7 @@ typedef HANDLE FileDescriptor;
 #endif
 
 #include "utils/compiler.hpp"
-#include "utils/logger.hpp"
+#include "logger.hpp"
 
 namespace {
 // Структура для хранения информации о блокировке
