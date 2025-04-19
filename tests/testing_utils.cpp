@@ -8,12 +8,10 @@
 #include "utils/logger.hpp"
 
 namespace {
-// Глобальный контейнер для хранения сгенерированных ID
-static std::unordered_set<std::string> randomIds;
 // Мьютекс для безопасного доступа к контейнеру из нескольких потоков
 static std::mutex randomIdsMutex;
 // Базовая часть наименования временных директорий
-static std::string tmpDirBase = "octet_test_";
+static const char tmpDirBase[] = "octet_test_";
 } // namespace
 
 namespace octet::tests {
@@ -29,6 +27,8 @@ int getRandomInt(int min, int max)
 
 std::string generateRandomId(size_t length)
 {
+    static std::unordered_set<std::string> randomIds;
+
     // Для каждого потока создаем свой экземпляр генератора
     thread_local std::mt19937 rng(std::random_device{}());
     static const char characters[]
