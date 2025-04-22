@@ -6,7 +6,6 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <sstream>
 
 #if defined(OCTET_PLATFORM_WINDOWS)
 #include <errno.h>
