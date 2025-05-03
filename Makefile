@@ -9,6 +9,10 @@ CMAKE_BUILD_TYPE ?= Release
 INSTALL_PREFIX   ?= /usr/local
 CMAKE_GENERATOR  ?= "Ninja"
 
+BUILD_SHARED     ?= ON
+BUILD_STATIC     ?= OFF
+BUILD_APP        ?= OFF
+
 # Default CMake configure
 CMAKE_FLAGS      := \
   	-S . \
@@ -19,7 +23,10 @@ CMAKE_FLAGS      := \
 CMAKE_BUILD_FLAGS := \
 	$(CMAKE_FLAGS) \
 	-B $(BUILD_DIR) \
-	-DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+	-DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) \
+	-DOCTET_BUILD_SHARED_LIB=$(BUILD_SHARED) \
+	-DOCTET_BUILD_STATIC_LIB=$(BUILD_STATIC) \
+	-DOCTET_BUILD_APP=$(BUILD_APP)
 
 # CMake configure for tests/coverage
 CMAKE_TEST_FLAGS := \

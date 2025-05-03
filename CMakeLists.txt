@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.17 FATAL_ERROR)
 
 # Инициализация проекта
 project(octet
-    VERSION 0.1.0
+    VERSION 0.2.0
     DESCRIPTION "Octet library for UTF-8 string storage"
     LANGUAGES CXX
 )
@@ -25,6 +25,7 @@ find_package(Threads REQUIRED)
 # Опции сборки
 option(OCTET_BUILD_SHARED_LIB "Build shared version of the library" ON)
 option(OCTET_BUILD_STATIC_LIB "Build static version of the library" OFF)
+option(OCTET_BUILD_APP "Build CLI executable" OFF)
 option(OCTET_BUILD_TESTS "Build tests" OFF)
 
 # TODO: При разработке CLI расскоментировать
@@ -132,22 +133,34 @@ if(OCTET_BUILD_STATIC_LIB)
     )
 endif()
 
-# TODO: При разработке CLI расскоментировать
-# # Создаение исполняемого файла
-# if(OCTET_BUILD_APP)
-#     add_executable(octet app/main.cpp)
-#     set_target_properties(octet PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
-#     target_include_directories(octet PRIVATE ${OCTET_INCLUDE_DIR})
+# Создаение исполняемого файла
+if(OCTET_BUILD_APP)
+    # Указание исходников для CLI-бинарника
+    set(OCTET_CLI_SOURCES
+        app/main.cpp
+    )
 
-#     # Динамическая библиотека в приоритете
-#     if(OCTET_BUILD_SHARED_LIB)
-#         target_link_libraries(octet PRIVATE octet_shared)
-#     elseif(OCTET_BUILD_STATIC_LIB)
-#         target_link_libraries(octet PRIVATE octet_static)
-#     else()
-#         message(FATAL_ERROR "Internal error! Can't build application without library.")
-#     endif()
-# endif()
+    add_executable(octet app/main.cpp)
+    set_target_properties(octet PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
+    )
+    target_include_directories(octet PRIVATE ${OCTET_INCLUDE_DIR})
+
+    # Динамическая библиотека в приоритете
+    if(OCTET_BUILD_SHARED_LIB)
+        target_link_libraries(octet PRIVATE octet_shared)
+    elseif(OCTET_BUILD_STATIC_LIB)
+        target_link_libraries(octet PRIVATE octet_static)
+    else()
+        message(FATAL_ERROR "Internal error! Can't build application without library.")
+    endif()
+
+    # Установка исполняемого файла в систему
+    install(TARGETS octet
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        COMPONENT applications
+    )
+endif()
 
 # Добавление тестов
 if(OCTET_BUILD_TESTS)
