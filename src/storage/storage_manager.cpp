@@ -230,6 +230,7 @@ std::optional<std::string> StorageManager::insert(const std::string &data)
     const auto uuid = uuidGenerator_.generateUuid();
     // Записываем в журнал
     if (!journalManager_.writeInsert(uuid, data)) {
+        LOG_ERROR << "Не удалось записать данные: " << data;
         return std::nullopt;
     }
     // Обновляем данные в памяти
@@ -252,7 +253,7 @@ std::optional<std::string> StorageManager::get(const std::string &uuid) const
         // Если нашли, возвращаем данные для переданного UUID
         return it->second;
     }
-    LOG_DEBUG << "Запись с UUID не найдена: " << uuid;
+    LOG_WARNING << "Запись с UUID не найдена: " << uuid;
     return std::nullopt;
 }
 
