@@ -14,7 +14,7 @@ void printHelp(const char *executable)
 {
     std::cout
         << "Использование:\n"
-        << "  " << executable << " --storage=ПУТЬ [ОПЦИИ] [РЕЖИМ РАБОТЫ] [АРГУМЕНТЫ]\n\n"
+        << "  " << executable << " [АРГУМЕНТЫ]\n\n"
 
         << "Описание:\n"
         << "  Хранилище UTF-8 строк с механизмом WAL, снапшотами и UUID-идентификаторами.\n\n"
@@ -35,8 +35,10 @@ void printHelp(const char *executable)
            "--interactive или --server.\n\n"
 
         << "=== Однократное выполнение команды ===\n"
-        << "  Запуск: octet --storage=ПУТЬ <КОМАНДА> [АРГУМЕНТЫ]\n"
+        << "  Запуск: " << executable << " --storage=ПУТЬ [ОПЦИИ] <КОМАНДА> [АРГУМЕНТЫ]\n"
         << "  Команда и аргументы указываются в командной строке.\n"
+        << "  Доступные опции:\n"
+        << "    --disable-warnings           Отключить вывод текстовых сообщений-предупреждений\n"
         << "  Доступные команды:\n"
         << "    insert \"<СТРОКА>\"            Вставить строку и получить ее UUID\n"
         << "    get <UUID>                   Получить строку по UUID\n"
@@ -47,8 +49,12 @@ void printHelp(const char *executable)
         << "  и при необходимости экранировать специальные символы.\n\n"
 
         << "=== Интерактивный режим ===\n"
-        << "  Запуск: octet --storage=ПУТЬ --interactive\n"
+        << "  Запуск: " << executable << " --storage=ПУТЬ --interactive [ОПЦИИ]\n"
         << "  В интерактивном режиме команды вводятся построчно.\n"
+        << "  Доступные опции:\n"
+        << "    --disable-warnings           Отключить вывод текстовых сообщений-предупреждений\n"
+        << "    --snapshot-operations=ЧИСЛО  Порог операций до снапшота (по умолчанию: 100)\n"
+        << "    --snapshot-minutes=ЧИСЛО     Интервал снапшотов в минутах (по умолчанию: 10)\n"
         << "  Доступные команды:\n"
         << "    insert <СТРОКА>              Вставить строку и получить ее UUID\n"
         << "    get <UUID>                   Получить строку по UUID\n"
@@ -65,11 +71,15 @@ void printHelp(const char *executable)
         << "  удаляются только незначащие пробелы в начале и в конце.\n\n"
 
         << "=== Серверный режим ===\n"
-        << "  Запуск: octet --storage=ПУТЬ --server [ОПЦИИ]\n"
-        << "  Опции:\n"
-        << "    --socket=ПУТЬ                Путь к Unix-сокету (вместо TCP)\n"
-        << "    --port=ПОРТ                  Порт HTTP-сервера (по умолчанию: 8080)\n"
-        << "    --address=АДРЕС              Адрес привязки (по умолчанию: 127.0.0.1)\n\n";
+        << "  Запуск: " << executable << " --storage=ПУТЬ --server [ОПЦИИ]\n"
+        << "  Доступные опции:\n"
+        << "    --disable-warnings           Отключить вывод текстовых сообщений-предупреждений\n"
+        << "    --snapshot-operations=ЧИСЛО  Порог операций до снапшота (по умолчанию: 100)\n"
+        << "    --snapshot-minutes=ЧИСЛО     Интервал снапшотов в минутах (по умолчанию: 10)\n"
+        << "    --socket=ПУТЬ                Путь к Unix-сокету (по умолчанию: /TMP/octet.sock).\n"
+        << "                                 Сокет не должен существовать.\n\n"
+
+        << "  Неподдерживаемые опции для выбранного режима будут проигнорированы.";
 }
 
 // Получение значения опции из аргументов командной строки
@@ -138,21 +148,22 @@ int main(int argc, char *argv[])
     // Инициализация логгера
     octet::Logger::getInstance().enable(true, std::nullopt, octet::LogLevel::WARNING, true, false);
 
+    // Получение параметров
+    const auto interactiveMode = hasFlag("--interactive", args);
+    const auto serverMode = hasFlag("--server", args);
+    const auto disableWarnings = hasFlag("disable-warnings", args);
+    const auto socketOption = getOptionValue("--socket", args);
+    std::optional<size_t> snapshotOpsThreshold;
+    std::optional<size_t> snapshotTimeThreshold;
+
     // Получение пути к хранилищу
     const auto storageOption = getOptionValue("--storage", args);
-    if (!storageOption) {
+    if (!storageOption.has_value()) {
         LOG_ERROR << "Ошибка: не указан путь к хранилищу (--storage=ПУТЬ)\n";
         printHelp(executable);
         return 1;
     }
     const auto storagePath = std::filesystem::path(*storageOption);
-
-    // Получение параметров
-    const auto interactiveMode = hasFlag("--interactive", args);
-    const auto serverMode = hasFlag("--server", args);
-    const auto disableWarnings = hasFlag("disable-warnings", args);
-    std::optional<size_t> snapshotOpsThreshold;
-    std::optional<size_t> snapshotTimeThreshold;
 
     // Если отключены предупреждения
     if (disableWarnings) {
@@ -183,8 +194,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    // TODO: необходимо распарсить дополнительные опции для серверного режима
-
     // Для интерактивного и серверного режимов не должно остаться аргументов
     if ((interactiveMode || serverMode) && !checkLastArgs(args)) {
         return 1;
@@ -192,16 +201,25 @@ int main(int argc, char *argv[])
 
     // Инициализация StorageManager
     octet::StorageManager storage(std::move(storagePath));
+    if (snapshotOpsThreshold.has_value()) {
+        storage.setSnapshotOperationsThreshold(*snapshotOpsThreshold);
+    }
+    if (snapshotTimeThreshold.has_value()) {
+        storage.setSnapshotTimeThreshold(*snapshotTimeThreshold);
+    }
 
+    // Запуск в серверном режиме
     if (serverMode) {
         // TODO: запуск серверного режима
         return 0;
     }
 
+    // Запуск в интерактивном режиме
     if (interactiveMode) {
         return octet::cli::CommandProcessor::runInteractiveMode(storage);
     }
 
+    // Запуск в режиме однократного выполнения команды
     const auto result = octet::cli::CommandProcessor::executeShot(storage, std::move(args));
     return result == octet::cli::CommandResult::SUCCESS ? 0 : 1;
 }
