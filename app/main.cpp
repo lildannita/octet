@@ -38,27 +38,31 @@ void printHelp(const char *executable)
         << "  Запуск: octet --storage=ПУТЬ <КОМАНДА> [АРГУМЕНТЫ]\n"
         << "  Команда и аргументы указываются в командной строке.\n"
         << "  Доступные команды:\n"
-        << "    insert \"<СТРОКА>\"          Вставить строку и получить ее UUID\n"
+        << "    insert \"<СТРОКА>\"            Вставить строку и получить ее UUID\n"
         << "    get <UUID>                   Получить строку по UUID\n"
-        << "    update <UUID> \"<СТРОКА>\"   Обновить строку по UUID\n"
+        << "    update <UUID> \"<СТРОКА>\"     Обновить строку по UUID\n"
         << "    remove <UUID>                Удалить строку по UUID\n\n"
 
-        << "  Для корректной передачи <СТРОКИ> рекомендуется заключать её в кавычки\n"
+        << "  Для корректной передачи <СТРОКА> рекомендуется заключать её в кавычки\n"
         << "  и при необходимости экранировать специальные символы.\n\n"
 
         << "=== Интерактивный режим ===\n"
         << "  Запуск: octet --storage=ПУТЬ --interactive\n"
         << "  В интерактивном режиме команды вводятся построчно.\n"
         << "  Доступные команды:\n"
-        << "    insert \"<СТРОКА>\"          Вставить строку и получить ее UUID\n"
+        << "    insert <СТРОКА>              Вставить строку и получить ее UUID\n"
         << "    get <UUID>                   Получить строку по UUID\n"
-        << "    update <UUID> \"<СТРОКА>\"   Обновить строку по UUID\n"
+        << "    update <UUID> <СТРОКА>       Обновить строку по UUID\n"
         << "    remove <UUID>                Удалить строку по UUID\n"
         << "    snapshot                     Принудительно создать снапшот\n"
         << "    set-snapshot-operations <N>  Изменить порог операций для снапшота\n"
         << "    set-snapshot-minutes <N>     Изменить интервал снапшота в минутах\n"
         << "    exit                         Выход из интерактивного режима\n"
         << "    help                         Показать справку по доступным командам\n\n"
+
+        << "  В этом режиме <СТРОКА> интерпретируется как есть — она принимается целиком,\n"
+        << "  без разбиения на слова или анализa содержимого. Перед обработкой из строки\n"
+        << "  удаляются только незначащие пробелы в начале и в конце.\n\n"
 
         << "=== Серверный режим ===\n"
         << "  Запуск: octet --storage=ПУТЬ --server [ОПЦИИ]\n"
@@ -190,15 +194,14 @@ int main(int argc, char *argv[])
     octet::StorageManager storage(std::move(storagePath));
 
     if (serverMode) {
-        // TODO: запуск интерактивного режима
+        // TODO: запуск серверного режима
         return 0;
     }
 
     if (interactiveMode) {
-        // TODO: запуск интерактивного режима
-        return 0;
+        return octet::cli::CommandProcessor::runInteractiveMode(storage);
     }
 
-    const auto result = octet::cli::CommandProcessor::executeShot(storage, args);
+    const auto result = octet::cli::CommandProcessor::executeShot(storage, std::move(args));
     return result == octet::cli::CommandResult::SUCCESS ? 0 : 1;
 }
