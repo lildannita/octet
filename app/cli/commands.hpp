@@ -41,13 +41,6 @@ struct Command {
 class CommandProcessor {
 public:
     /**
-     * @brief Конструктор с указанием объекта хранилища
-     * @param storage Ссылка на объект StorageManager
-     * @param singleShotMode Процессор создается для однократного выполнения команды
-     */
-    CommandProcessor(StorageManager &storage, bool singleShotMode);
-
-    /**
      * @brief Одноразовое выполнение команды
      * @param storage Ссылка на объект StorageManager
      * @param args Аргументы командной строки
@@ -65,6 +58,13 @@ private:
     StorageManager &storage_; // Хранилище
     std::unordered_map<std::string, Command> commands_; // Зарегестрированные команды
     bool singleShotMode_ = false;
+
+    /**
+     * @brief Конструктор с указанием объекта хранилища
+     * @param storage Ссылка на объект StorageManager
+     * @param singleShotMode Процессор создается для однократного выполнения команды
+     */
+    CommandProcessor(StorageManager &storage, bool singleShotMode);
 
     /**
      * @brief Фактическое выполнение команды
