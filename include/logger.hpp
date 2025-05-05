@@ -48,10 +48,12 @@ public:
      * @param logFile Путь к файлу для логирования (опционально)
      * @param minLevel Минимальный уровень сообщений для логирования
      * @param useColors Использовать цветной вывод в консоли (если поддерживается)
+     * @param formatMessage Форматировать сообщение (префикс + дата + откуда вызвано)
      */
     void enable(bool logToConsole = true,
                 std::optional<std::filesystem::path> logFile = std::nullopt,
-                LogLevel minLevel = LogLevel::INFO, bool useColors = true);
+                LogLevel minLevel = LogLevel::INFO, bool useColors = true,
+                bool formatMessage = true);
 
     /**
      * @brief Отключает логирование
@@ -89,14 +91,27 @@ public:
     bool getUseColors() const;
 
     /**
+     * @brief Включение или отключение форматирования сообщения
+     * @param formatMessage true для форматирования сообщения
+     */
+    void setFormatMessage(bool formatMessage);
+
+    /**
+     * @brief Проверка, включено ли форматирование сообщения
+     * @return true, если форматирование включено
+     */
+    bool getFormatMessage() const;
+
+    /**
      * @brief Логирование сообщения с указанным уровнем
      * @param level Уровень сообщения
      * @param message Текст сообщения
      * @param file Имя файла, из которого вызвана функция логирования
      * @param line Номер строки, из которой вызвана функция логирования
+     * @param useLock Нужно ли использовать блокировку
      */
     void log(LogLevel level, const std::string &message, const std::string_view file = {},
-             int line = 0);
+             int line = 0, bool useLock = true);
 
 private:
     // Запрещаем создание экземпляров класса напрямую
@@ -111,6 +126,7 @@ private:
     bool enabled_; // Включено ли логирование
     bool consoleOutput_; // Вывод в консоль
     bool colorOutput_; // Использовать цветной вывод
+    bool formatMessage_; // Использовать префикс
     std::optional<std::filesystem::path> logFilePath_; // Путь к файлу лога
     LogLevel minimumLevel_; // Минимальный уровень логирования
     std::mutex logMutex_; // Мьютекс для потокобезопасности
