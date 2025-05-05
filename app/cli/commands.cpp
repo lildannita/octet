@@ -2,6 +2,41 @@
 
 #include <algorithm>
 
+namespace {
+/**
+ * @brief Схлопывание строк вектора в одну указанную строку
+ * @param args Ссылка на вектор строк
+ * @param targetIndex Индекс строки, в которую будут добавленые следующие элементы
+ */
+void mergeVector(std::vector<std::string> &args, size_t targetIndex)
+{
+    if (args.size() <= targetIndex + 1) {
+        // Нечего объединять
+        return;
+    }
+
+    const size_t argsLen = args.size();
+    // Итоговый размер строки: сумма длин + пробелы между ними
+    size_t totalLen = argsLen - targetIndex - 1; // количество пробелов
+    for (std::size_t i = targetIndex; i < argsLen; i++) {
+        totalLen += args[i].size();
+    }
+
+    // Будем наращивать в указанный элемент вектора, зарезервировав нужное место
+    std::string &out = args[targetIndex];
+    out.reserve(totalLen);
+
+    // Добавляем остальные строки
+    for (size_t i = targetIndex + 1; i < argsLen; i++) {
+        out.push_back(' ');
+        out.append(std::move(args[i]));
+    }
+
+    // Удаляем все строки, идущие после targetIndex
+    args.erase(args.begin() + targetIndex + 1, args.end());
+}
+} // namespace
+
 namespace octet::cli {
 CommandProcessor::CommandProcessor(octet::StorageManager &storage)
     : storage_(storage)
@@ -124,6 +159,15 @@ CommandResult CommandProcessor::do_execute(std::vector<std::string> &args, bool 
         LOG_ERROR << "Ошибка: неизвестная команда: " << commandName << ".\n"
                   << "Введите `help` для получения списка доступных команд";
         return CommandResult::FAILURE;
+    }
+
+    if (commandName.compare("insert") == 0) {
+        // Для `insert` все элементы вектора схлопываем в первый
+        mergeVector(args, 0);
+    }
+    else if (commandName.compare("update") == 0) {
+        // Для `update` все элементы вектора схлопываем во второй
+        mergeVector(args, 1);
     }
 
     const auto &cmd = it->second;
