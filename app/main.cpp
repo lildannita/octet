@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "cli/commands.hpp"
+#include "server/server.hpp"
 #include "storage/storage_manager.hpp"
 #include "logger.hpp"
 
@@ -152,7 +153,7 @@ int main(int argc, char *argv[])
     const auto interactiveMode = hasFlag("--interactive", args);
     const auto serverMode = hasFlag("--server", args);
     const auto disableWarnings = hasFlag("disable-warnings", args);
-    const auto socketOption = getOptionValue("--socket", args);
+    const auto socketPath = getOptionValue("--socket", args);
     std::optional<size_t> snapshotOpsThreshold;
     std::optional<size_t> snapshotTimeThreshold;
 
@@ -210,8 +211,7 @@ int main(int argc, char *argv[])
 
     // Запуск в серверном режиме
     if (serverMode) {
-        // TODO: запуск серверного режима
-        return 0;
+        return octet::server::Server::startServer(storage, socketPath);
     }
 
     // Запуск в интерактивном режиме

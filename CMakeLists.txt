@@ -19,8 +19,7 @@ include(GNUInstallDirs)
 
 # Поиск необходимых библиотек
 find_package(Threads REQUIRED)
-# TODO: При разработке CLI расскоментировать
-# find_package(Boost REQUIRED COMPONENTS system)
+find_package(Boost REQUIRED CONFIG COMPONENTS system)
 
 # Опции сборки
 option(OCTET_BUILD_SHARED_LIB "Build shared version of the library" ON)
@@ -143,6 +142,13 @@ if(OCTET_BUILD_APP)
         app/main.cpp
         app/cli/commands.hpp
         app/cli/commands.cpp
+        app/server/connection.hpp
+        app/server/connection.cpp
+        app/server/protocol.hpp
+        app/server/protocol.cpp
+        app/server/server.hpp
+        app/server/server.cpp
+        app/3rdparty/json.hpp
     )
 
     add_executable(octet ${OCTET_CLI_SOURCES})
@@ -157,9 +163,9 @@ if(OCTET_BUILD_APP)
 
     # Динамическая библиотека в приоритете
     if(OCTET_BUILD_SHARED_LIB)
-        target_link_libraries(octet PRIVATE octet_shared)
+        target_link_libraries(octet PRIVATE octet_shared Boost::system)
     elseif(OCTET_BUILD_STATIC_LIB)
-        target_link_libraries(octet PRIVATE octet_static)
+        target_link_libraries(octet PRIVATE octet_static Boost::system)
     else()
         message(FATAL_ERROR "Internal error! Can't build application without library.")
     endif()
