@@ -1,11 +1,11 @@
-#include <iostream>
-#include <string>
-#include <filesystem>
-#include <vector>
-#include <map>
 #include <algorithm>
+#include <filesystem>
+#include <iostream>
 #include <optional>
+#include <string>
+#include <vector>
 
+#include "cli/commands.hpp"
 #include "storage/storage_manager.hpp"
 #include "logger.hpp"
 
@@ -17,8 +17,7 @@ void printHelp(const char *executable)
         << "  " << executable << " --storage=ПУТЬ [ОПЦИИ] [РЕЖИМ РАБОТЫ] [АРГУМЕНТЫ]\n\n"
 
         << "Описание:\n"
-        << "  Хранилище JSON-совместимых UTF-8 строк с журналированием, снапшотами и "
-           "UUID-идентификаторами.\n\n"
+        << "  Хранилище UTF-8 строк с механизмом WAL, снапшотами и UUID-идентификаторами.\n\n"
 
         << "Путь к хранилищу (--storage):\n"
         << "  Параметр --storage указывает директорию, где будут храниться данные,\n"
@@ -26,11 +25,10 @@ void printHelp(const char *executable)
         << "  Пример: --storage=~/octet/mystorage\n\n"
 
         << "Общие опции:\n"
-        << "  --snapshot-operations=ЧИСЛО   Порог операций до снапшота (по умолчанию: 100)\n"
-        << "  --snapshot-minutes=ЧИСЛО      Интервал снапшотов в минутах (по умолчанию: 10)\n"
-        << "  --log-level=УРОВЕНЬ           Установить уровень логирования (по умолчанию: info)\n"
-        << "  --log-disable-colors          Запретить цветной вывод (по умолчанию: включен)\n"
-        << "  --help                        Показать справку\n\n"
+        << "  --snapshot-operations=ЧИСЛО    Порог операций до снапшота (по умолчанию: 100)\n"
+        << "  --snapshot-minutes=ЧИСЛО       Интервал снапшотов в минутах (по умолчанию: 10)\n"
+        << "  --disable-warnings             Отключить вывод текстовых сообщений-предупреждений\n"
+        << "  --help                         Показать справку\n\n"
 
         << "Режимы работы:\n"
         << "  По умолчанию octet выполняет однократную команду, если не указаны "
@@ -40,60 +38,31 @@ void printHelp(const char *executable)
         << "  Запуск: octet --storage=ПУТЬ <КОМАНДА> [АРГУМЕНТЫ]\n"
         << "  Команда и аргументы указываются в командной строке.\n"
         << "  Доступные команды:\n"
-        << "    insert <СТРОКА>              Вставить строку и получить ее UUID\n"
+        << "    insert \"<СТРОКА>\"          Вставить строку и получить ее UUID\n"
         << "    get <UUID>                   Получить строку по UUID\n"
-        << "    update <UUID> <СТРОКА>       Обновить строку по UUID\n"
-        << "    delete <UUID>                Удалить строку по UUID\n"
-        << "    snapshot                     Принудительно создать снапшот\n\n"
+        << "    update <UUID> \"<СТРОКА>\"   Обновить строку по UUID\n"
+        << "    remove <UUID>                Удалить строку по UUID\n\n"
 
         << "=== Интерактивный режим ===\n"
         << "  Запуск: octet --storage=ПУТЬ --interactive\n"
         << "  В интерактивном режиме команды вводятся построчно.\n"
         << "  Доступные команды:\n"
-        << "    insert <СТРОКА>              Вставить строку и получить ее UUID\n"
+        << "    insert \"<СТРОКА>\"          Вставить строку и получить ее UUID\n"
         << "    get <UUID>                   Получить строку по UUID\n"
-        << "    update <UUID> <СТРОКА>       Обновить строку по UUID\n"
-        << "    delete <UUID>                Удалить строку по UUID\n"
+        << "    update <UUID> \"<СТРОКА>\"   Обновить строку по UUID\n"
+        << "    remove <UUID>                Удалить строку по UUID\n"
         << "    snapshot                     Принудительно создать снапшот\n"
         << "    set-snapshot-operations <N>  Изменить порог операций для снапшота\n"
         << "    set-snapshot-minutes <N>     Изменить интервал снапшота в минутах\n"
-        << "    set-log-level <УРОВЕНЬ>      Установить уровень логирования\n\n"
+        << "    exit                         Выход из интерактивного режима\n"
+        << "    help                         Показать справку по доступным командам\n\n"
 
         << "=== Серверный режим ===\n"
         << "  Запуск: octet --storage=ПУТЬ --server [ОПЦИИ]\n"
         << "  Опции:\n"
         << "    --socket=ПУТЬ                Путь к Unix-сокету (вместо TCP)\n"
         << "    --port=ПОРТ                  Порт HTTP-сервера (по умолчанию: 8080)\n"
-        << "    --address=АДРЕС              Адрес привязки (по умолчанию: 127.0.0.1)\n\n"
-
-        << "Уровни логирования:\n"
-        << "  trace (0)                     Детальная трассировка для отладки\n"
-        << "  debug (1)                     Отладочные сообщения\n"
-        << "  info (2)                      Информационные сообщения\n"
-        << "  warning (3)                   Предупреждения, не являющиеся ошибками\n"
-        << "  error (4)                     Ошибки, не прерывающие работу программы\n"
-        << "  critical (5)                  Критические ошибки, прерывающие выполнение\n";
-}
-
-// Преобразование строки в LogLevel
-std::optional<octet::LogLevel> parseLogLevel(const std::string &level)
-{
-    std::string lowered = level;
-    std::transform(lowered.begin(), lowered.end(), lowered.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
-    if (lowered == "trace" || lowered == "0")
-        return octet::LogLevel::TRACE;
-    if (lowered == "debug" || lowered == "1")
-        return octet::LogLevel::DEBUG;
-    if (lowered == "info" || lowered == "2")
-        return octet::LogLevel::INFO;
-    if (lowered == "warning" || lowered == "3")
-        return octet::LogLevel::WARNING;
-    if (lowered == "error" || lowered == "4")
-        return octet::LogLevel::ERROR;
-    if (lowered == "critical" || lowered == "5")
-        return octet::LogLevel::CRITICAL;
-    return std::nullopt;
+        << "    --address=АДРЕС              Адрес привязки (по умолчанию: 127.0.0.1)\n\n";
 }
 
 // Получение значения опции из аргументов командной строки
@@ -159,8 +128,8 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    // Инициализация логгера в режиме по умолчанию
-    octet::Logger::getInstance().enable();
+    // Инициализация логгера
+    octet::Logger::getInstance().enable(true, std::nullopt, octet::LogLevel::WARNING, true, false);
 
     // Получение пути к хранилищу
     const auto storageOption = getOptionValue("--storage", args);
@@ -174,10 +143,14 @@ int main(int argc, char *argv[])
     // Получение параметров
     const auto interactiveMode = hasFlag("--interactive", args);
     const auto serverMode = hasFlag("--server", args);
-    const auto disableColorLog = hasFlag("--log-disable-colors", args);
+    const auto disableWarnings = hasFlag("disable-warnings", args);
     std::optional<size_t> snapshotOpsThreshold;
     std::optional<size_t> snapshotTimeThreshold;
-    std::optional<octet::LogLevel> logLevel;
+
+    // Если отключены предупреждения
+    if (disableWarnings) {
+        octet::Logger::getInstance().setMinLogLevel(octet::LogLevel::ERROR);
+    }
 
     // Парсинг порога операций для снапшота
     const auto opsOption = getOptionValue("--snapshot-operations", args);
@@ -203,19 +176,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Парсинг уровня логирования
-    const auto levelOption = getOptionValue("--log-level", args);
-    if (levelOption.has_value()) {
-        const auto rawLogLevel = parseLogLevel(*levelOption);
-        if (rawLogLevel.has_value()) {
-            logLevel = parseLogLevel(*levelOption);
-        }
-        else {
-            LOG_ERROR << "Ошибка: некорректное значение для --log-level";
-            return 1;
-        }
-    }
-
     // TODO: необходимо распарсить дополнительные опции для серверного режима
 
     // Для интерактивного и серверного режимов не должно остаться аргументов
@@ -225,11 +185,6 @@ int main(int argc, char *argv[])
 
     // Инициализация StorageManager
     octet::StorageManager storage(std::move(storagePath));
-    // Настраиваем логгер согласно заданным параметрам
-    if (logLevel.has_value()) {
-        octet::Logger::getInstance().setMinLogLevel(*logLevel);
-    }
-    octet::Logger::getInstance().setUseColors(!disableColorLog);
 
     if (serverMode) {
         // TODO: запуск интерактивного режима
@@ -241,6 +196,6 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    // TODO: выполнение команды
-    return 0;
+    const auto result = octet::cli::CommandProcessor::executeShot(storage, args);
+    return result == octet::cli::CommandResult::SUCCESS ? 0 : 1;
 }

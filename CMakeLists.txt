@@ -135,16 +135,25 @@ endif()
 
 # Создаение исполняемого файла
 if(OCTET_BUILD_APP)
+    # Для подключения заголовков
+    set(OCTET_INCLUDE_CLI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/app")
+
     # Указание исходников для CLI-бинарника
     set(OCTET_CLI_SOURCES
         app/main.cpp
+        app/cli/commands.hpp
+        app/cli/commands.cpp
     )
 
-    add_executable(octet app/main.cpp)
+    add_executable(octet ${OCTET_CLI_SOURCES})
     set_target_properties(octet PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
     )
-    target_include_directories(octet PRIVATE ${OCTET_INCLUDE_DIR})
+    target_include_directories(octet
+        PRIVATE
+            ${OCTET_INCLUDE_DIR}
+            ${OCTET_INCLUDE_CLI_DIR}
+    )
 
     # Динамическая библиотека в приоритете
     if(OCTET_BUILD_SHARED_LIB)
