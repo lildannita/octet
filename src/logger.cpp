@@ -277,6 +277,8 @@ std::string Logger::levelToString(LogLevel level)
         return "ERROR";
     case LogLevel::CRITICAL:
         return "CRITICAL";
+    case LogLevel::IMPORTANT:
+        return "IMPORTANT";
     default:
         UNREACHABLE("Unsopported LogLevel");
     }
@@ -346,6 +348,9 @@ void Logger::writeToConsole(const std::string &formattedMessage, LogLevel level)
             break;
         case LogLevel::CRITICAL:
             colorCode = ConsoleColor::MAGENTA;
+            break;
+        case LogLevel::IMPORTANT:
+            // Используем стандартный цвет
             break;
         default:
             UNREACHABLE("Unsupported LogLevel");

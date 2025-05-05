@@ -24,7 +24,8 @@ enum class LogLevel {
     INFO, // Информационные сообщения
     WARNING, // Предупреждения, не являющиеся ошибками
     ERROR, // Ошибки, не прерывающие работу программы
-    CRITICAL // Критические ошибки, прерывающие работу программы
+    CRITICAL, // Критические ошибки, прерывающие работу программы
+    IMPORTANT // Важные информационные сообщения
 };
 
 /**
@@ -251,3 +252,4 @@ private:
 #define LOG_CRITICAL                                                                               \
     if (LOG_CRITICAL_ENABLED)                                                                      \
     octet::LogStream(octet::LogLevel::CRITICAL, __FILE__, __LINE__)
+#define LOG_IMPORTANT octet::LogStream(octet::LogLevel::IMPORTANT, __FILE__, __LINE__)
