@@ -164,54 +164,48 @@ CommandProcessor::CommandProcessor(octet::StorageManager &storage, bool singleSh
 
     // Команда вставки строки
     commands_["insert"]
-        = { 1, false,
-            [this](const std::vector<std::string> &args, std::ostream &out) -> CommandResult {
-                const auto result = storage_.insert(args[0]);
-                if (result.has_value()) {
-                    out << *result << "\n";
-                    return CommandResult::SUCCESS;
-                }
-                return CommandResult::FAILURE;
-            } };
+        = { 1, false, [this](const std::vector<std::string> &args) -> CommandResult {
+               const auto result = storage_.insert(args[0]);
+               if (result.has_value()) {
+                   LOG_IMPORTANT << *result;
+                   return CommandResult::SUCCESS;
+               }
+               return CommandResult::FAILURE;
+           } };
 
     // Команда получения строки
-    commands_["get"]
-        = { 1, false,
-            [this](const std::vector<std::string> &args, std::ostream &out) -> CommandResult {
-                const auto result = storage_.get(args[0]);
-                if (result.has_value()) {
-                    out << *result << "\n";
-                    return CommandResult::SUCCESS;
-                }
-                return CommandResult::FAILURE;
-            } };
+    commands_["get"] = { 1, false, [this](const std::vector<std::string> &args) -> CommandResult {
+                            const auto result = storage_.get(args[0]);
+                            if (result.has_value()) {
+                                LOG_IMPORTANT << *result;
+                                return CommandResult::SUCCESS;
+                            }
+                            return CommandResult::FAILURE;
+                        } };
 
     // Команда обновления строки
     commands_["update"]
-        = { 2, false,
-            [this](const std::vector<std::string> &args, std::ostream &) -> CommandResult {
-                const auto result = storage_.update(args[0], args[1]);
-                return result ? CommandResult::SUCCESS : CommandResult::FAILURE;
-            } };
-
-    // Команда удаления строки
-    commands_["remove"]
-        = { 1, false,
-            [this](const std::vector<std::string> &args, std::ostream &) -> CommandResult {
-                const auto result = storage_.remove(args[0]);
-                return result ? CommandResult::SUCCESS : CommandResult::FAILURE;
-            } };
-
-    // Команда создания снапшота
-    commands_["snapshot"]
-        = { 0, true, [this](const std::vector<std::string> &, std::ostream &) -> CommandResult {
-               const auto result = storage_.createSnapshot();
+        = { 2, false, [this](const std::vector<std::string> &args) -> CommandResult {
+               const auto result = storage_.update(args[0], args[1]);
                return result ? CommandResult::SUCCESS : CommandResult::FAILURE;
            } };
 
+    // Команда удаления строки
+    commands_["remove"]
+        = { 1, false, [this](const std::vector<std::string> &args) -> CommandResult {
+               const auto result = storage_.remove(args[0]);
+               return result ? CommandResult::SUCCESS : CommandResult::FAILURE;
+           } };
+
+    // Команда создания снапшота
+    commands_["snapshot"] = { 0, true, [this](const std::vector<std::string> &) -> CommandResult {
+                                 const auto result = storage_.createSnapshot();
+                                 return result ? CommandResult::SUCCESS : CommandResult::FAILURE;
+                             } };
+
     // Команда установки порога операций для снапшота
     commands_["set-snapshot-operations"]
-        = { 1, true, [this](const std::vector<std::string> &args, std::ostream &) -> CommandResult {
+        = { 1, true, [this](const std::vector<std::string> &args) -> CommandResult {
                try {
                    const auto threshold = std::stoul(args[0]);
                    storage_.setSnapshotOperationsThreshold(threshold);
@@ -225,7 +219,7 @@ CommandProcessor::CommandProcessor(octet::StorageManager &storage, bool singleSh
 
     // Команда установки интервала снапшота в минутах
     commands_["set-snapshot-minutes"]
-        = { 1, true, [this](const std::vector<std::string> &args, std::ostream &) -> CommandResult {
+        = { 1, true, [this](const std::vector<std::string> &args) -> CommandResult {
                try {
                    const auto minutes = std::stoul(args[0]);
                    storage_.setSnapshotTimeThreshold(minutes);
@@ -238,16 +232,16 @@ CommandProcessor::CommandProcessor(octet::StorageManager &storage, bool singleSh
            } };
 
     // Команда выхода
-    commands_["exit"]
-        = { 0, true, [this](const std::vector<std::string> &, std::ostream &) -> CommandResult {
-               return CommandResult::EXIT;
-           } };
+    commands_["exit"] = { 0, true, [this](const std::vector<std::string> &) -> CommandResult {
+                             return CommandResult::EXIT;
+                         } };
 
     // Команда вывода справки
     commands_["help"] = {
         0, true,
-        [this](const std::vector<std::string> &, std::ostream &out) -> CommandResult {
-            out << "Доступные команды:\n"
+        [this](const std::vector<std::string> &) -> CommandResult {
+            LOG_IMPORTANT
+                << "Доступные команды:\n"
                 << "  insert <СТРОКА>              Вставить строку и получить ее UUID\n"
                 << "  get <UUID>                   Получить строку по UUID\n"
                 << "  update <UUID> <СТРОКА>       Обновить строку по UUID\n"
@@ -260,14 +254,14 @@ CommandProcessor::CommandProcessor(octet::StorageManager &storage, bool singleSh
 
                 << "  В этом режиме <СТРОКА> интерпретируется как есть — она принимается целиком,\n"
                 << "  без разбиения на слова или анализa содержимого. Перед обработкой из строки\n"
-                << "  удаляются только незначащие пробелы в начале и в конце.\n\n";
+                << "  удаляются только незначащие пробелы в начале и в конце.\n";
             return CommandResult::SUCCESS;
         }
     };
 }
 
 CommandResult CommandProcessor::do_execute(const std::string &command,
-                                           std::vector<std::string> args, std::ostream &out) const
+                                           std::vector<std::string> args) const
 {
     auto it = commands_.find(command);
     if (it == commands_.end()) {
@@ -301,7 +295,7 @@ CommandResult CommandProcessor::do_execute(const std::string &command,
     }
 
     // Выполнение команды
-    return cmd.execute(args, out);
+    return cmd.execute(args);
 }
 
 CommandResult CommandProcessor::executeShot(StorageManager &storage, std::vector<std::string> args)
@@ -328,8 +322,8 @@ int CommandProcessor::runInteractiveMode(StorageManager &storage)
     std::string input;
 
     // Приветственное сообщение
-    std::cout << "Octet - интерактивный режим\n"
-              << "Введите команду или 'help' для получения справки, 'exit' для выхода\n";
+    LOG_IMPORTANT << "Octet - интерактивный режим\n"
+                  << "Введите команду или 'help' для получения справки, 'exit' для выхода";
 
     while (true) {
         // Вывод приглашения и получение ввода
@@ -358,7 +352,7 @@ int CommandProcessor::runInteractiveMode(StorageManager &storage)
         try {
             const auto result = processor.do_execute(command, args);
             if (result == octet::cli::CommandResult::EXIT) {
-                std::cout << "Выход из интерактивного режима\n";
+                LOG_IMPORTANT << "Выход из интерактивного режима";
                 return 0;
             }
         }

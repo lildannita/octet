@@ -31,7 +31,7 @@ struct Command {
     // Команда только для интерактивного режима
     bool onlyForInteractive;
     // Функция выполнения команды
-    std::function<CommandResult(const std::vector<std::string> &, std::ostream &)> execute;
+    std::function<CommandResult(const std::vector<std::string> &)> execute;
 };
 
 /**
@@ -72,7 +72,6 @@ private:
      * @param args Аргументы командной строки
      * @param out Поток вывода результата выполнения команды
      */
-    CommandResult do_execute(const std::string &command, std::vector<std::string> args,
-                             std::ostream &out = std::cout) const;
+    CommandResult do_execute(const std::string &command, std::vector<std::string> args) const;
 };
 } // namespace octet::cli
