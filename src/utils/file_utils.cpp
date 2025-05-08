@@ -242,12 +242,9 @@ bool ensureDirectoryExists(const std::filesystem::path &dir, bool createIfMissin
     LOG_DEBUG << "Проверка директории: " << dir.string()
               << ", создавать если отсутствует: " << (createIfMissing ? "да" : "нет");
 
-    FileLockGuard lock(dir, LockMode::EXCLUSIVE);
-
     std::error_code ec;
     if (std::filesystem::exists(dir, ec)) {
         assert(!ec);
-
         if (!std::filesystem::is_directory(dir, ec)) {
             if (ec) {
                 LOG_ERROR << "Ошибка при проверке, является ли путь директорией: " << dir.string()
@@ -268,6 +265,12 @@ bool ensureDirectoryExists(const std::filesystem::path &dir, bool createIfMissin
 
     if (!createIfMissing) {
         LOG_DEBUG << "Директория не существует и не будет создана: " << dir.string();
+        return false;
+    }
+
+    FileLockGuard lock(dir, LockMode::EXCLUSIVE);
+    if (!lock.isLocked()) {
+        LOG_ERROR << "Не удалось получить блокировку для создания директории: " << dir.string();
         return false;
     }
 
