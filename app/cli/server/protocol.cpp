@@ -49,8 +49,10 @@ CommandType Request::stringToCommand(const std::string &cmd_str)
         return CommandType::GET;
     if (cmd_str == "update")
         return CommandType::UPDATE;
-    if (cmd_str == "delete")
-        return CommandType::DELETE;
+    if (cmd_str == "remove")
+        return CommandType::REMOVE;
+    if (cmd_str == "ping")
+        return CommandType::PING;
     return CommandType::UNKNOWN;
 }
 

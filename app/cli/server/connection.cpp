@@ -153,11 +153,10 @@ Response Connection::handleRequest(const Request &request)
             }
             break;
         }
-
         case CommandType::GET: {
             if (!request.uuid.has_value()) {
                 response.success = false;
-                response.error = "Missing guid for GET";
+                response.error = "Missing uuid for GET";
                 break;
             }
 
@@ -171,7 +170,6 @@ Response Connection::handleRequest(const Request &request)
             }
             break;
         }
-
         case CommandType::UPDATE: {
             if (!request.uuid.has_value() || !request.data.has_value()) {
                 response.success = false;
@@ -186,22 +184,23 @@ Response Connection::handleRequest(const Request &request)
             }
             break;
         }
-
-        case CommandType::DELETE: {
+        case CommandType::REMOVE: {
             if (!request.uuid.has_value()) {
                 response.success = false;
-                response.error = "Missing guid for DELETE";
+                response.error = "Missing uuid for REMOVE";
                 break;
             }
 
             const auto result = storage_.remove(*request.uuid);
             if (!result) {
                 response.success = false;
-                response.error = "Failed to delete item";
+                response.error = "Failed to remove item";
             }
             break;
         }
-
+        case CommandType::PING: {
+            break;
+        }
         case CommandType::UNKNOWN:
         default: {
             response.success = false;

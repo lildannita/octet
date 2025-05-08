@@ -10,7 +10,7 @@ namespace octet::server {
  * @enum CommandType
  * @brief Типы команд для взаимодействия между Go и C++
  */
-enum class CommandType { INSERT, GET, UPDATE, DELETE, UNKNOWN };
+enum class CommandType { INSERT, GET, UPDATE, REMOVE, PING, UNKNOWN };
 
 /**
  * @struct Request
