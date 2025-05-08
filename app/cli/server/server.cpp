@@ -3,6 +3,7 @@
 #include <iostream>
 #include <boost/system/error_code.hpp>
 
+#include "utils/file_utils.hpp"
 #include "logger.hpp"
 
 namespace {
@@ -48,6 +49,12 @@ int Server::start()
         if (std::filesystem::exists(socketPath_, ec)) {
             LOG_ERROR << "Сокет существует: " << socketPath_.string()
                       << ", удалите его вручную и перезапустите программу";
+            return false;
+        }
+
+        if (!utils::ensureDirectoryExists(socketPath_.parent_path())) {
+            LOG_ERROR << "Не удалось обеспечить существование директории для сокета: "
+                      << socketPath_.string();
             return false;
         }
 
