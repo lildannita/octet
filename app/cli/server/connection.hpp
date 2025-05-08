@@ -58,6 +58,11 @@ private:
     void read();
 
     /**
+     * @brief Обработка сообщений в буфере
+     */
+    void processMessages();
+
+    /**
      * @brief Постановка данных в очередь на отправку
      * @param response Ответ для отправки
      */

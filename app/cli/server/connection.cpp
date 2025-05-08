@@ -1,10 +1,11 @@
 #include "connection.hpp"
 
-#include <iostream>
-
 #include "logger.hpp"
 
 namespace octet::server {
+// Максимальный размер буфера чтения (16 КБ)
+constexpr uint16_t MAX_BUFFER_SIZE = 16384;
+
 Connection::SharedConnection Connection::create(boost::asio::io_context &io_context,
                                                 StorageManager &storage)
 {
@@ -15,8 +16,8 @@ Connection::Connection(boost::asio::io_context &io_context, StorageManager &stor
     : socket_(io_context)
     , storage_(storage)
 {
-    // Резервируем место для чтения (8 КБ)
-    readBuffer_.reserve(8192);
+    // Резервируем место для чтения
+    readBuffer_.reserve(MAX_BUFFER_SIZE);
 }
 
 boost::asio::local::stream_protocol::socket &Connection::socket()
@@ -35,44 +36,70 @@ void Connection::read()
     // Предотвращаем уничтожение указателя во время чтения
     auto self(shared_from_this());
 
-    // Создаем временный буфер для чтения
-    std::vector<uint8_t> tmpBuffer(1024);
+    // Создаем временный буфер
+    auto tmpBuffer = std::make_shared<std::vector<uint8_t>>(1024);
 
     // Асинхронное чтение
     socket_.async_read_some(
-        boost::asio::buffer(tmpBuffer), [this, self, tmpBuffer = std::move(tmpBuffer)](
-                                            boost::system::error_code ec, std::size_t length) {
-            if (!ec) {
-                // Добавляем прочитанные данные в буфер
-                readBuffer_.insert(readBuffer_.end(), tmpBuffer.begin(),
-                                   tmpBuffer.begin() + length);
-
-                // Пытаемся извлечь сообщение из буфера
-                const auto jsonMessage = ProtocolFrame::extractMessage(readBuffer_);
-                if (jsonMessage.has_value()) {
-                    // Разбираем запрос
-                    const auto request = Request::fromJson(*jsonMessage);
-                    if (request.has_value()) {
-                        // Обрабатываем запрос и отправляем ответ
-                        const auto response = handleRequest(*request);
-                        write(response);
-                    }
-                    else {
-                        // Отправляем ошибку, если запрос некорректен
-                        Response errorResponse;
-                        errorResponse.requestId = "error";
-                        errorResponse.success = false;
-                        errorResponse.error = "Invalid request format";
-                        write(errorResponse);
-                    }
+        boost::asio::buffer(*tmpBuffer), [this, self = shared_from_this(), tmpBuffer](
+                                             boost::system::error_code ec, std::size_t length) {
+            // Обрабатываем ошибки
+            if (ec) {
+                if (ec != boost::asio::error::operation_aborted) {
+                    LOG_ERROR << "Ошибка при чтении: " << ec.message();
                 }
-                // Продолжаем чтение
-                read();
+                return; // Не продолжаем цикл чтения при ошибке
             }
-            else if (ec != boost::asio::error::operation_aborted) {
-                LOG_ERROR << "Ошибка при чтении: " << ec.message();
+
+            // Проверяем, что получили данные
+            if (length == 0) {
+                LOG_WARNING << "Получены данные нулевой длины, продолжаем чтение";
+                read(); // Повторяем чтение
+                return;
             }
+
+            // Чистим буффер, если у нас переполнение
+            if (readBuffer_.size() + length > MAX_BUFFER_SIZE) {
+                LOG_ERROR << "Переполнение буфера чтения, очищаем";
+                readBuffer_.clear();
+            }
+            // Добавляем данные в буфер
+            readBuffer_.insert(readBuffer_.end(), tmpBuffer->begin(), tmpBuffer->begin() + length);
+
+            // Обрабатываем сообщения из буфера
+            processMessages();
+
+            // Продолжаем чтение
+            read();
         });
+}
+
+void Connection::processMessages()
+{
+    while (true) {
+        const auto jsonMessage = ProtocolFrame::extractMessage(readBuffer_);
+        if (!jsonMessage.has_value()) {
+            break; // Нет полных сообщений, выходим из цикла
+        }
+        LOG_DEBUG << "Извлечено сообщение: " << *jsonMessage;
+
+        // Разбираем запрос
+        const auto request = Request::fromJson(*jsonMessage);
+        if (request.has_value()) {
+            // Обрабатываем запрос и отправляем ответ
+            const auto response = handleRequest(*request);
+            write(response);
+        }
+        else {
+            LOG_ERROR << "Некорректный формат запроса: " << *jsonMessage;
+            // Отправляем ошибку
+            Response errorResponse;
+            errorResponse.requestId = "error";
+            errorResponse.success = false;
+            errorResponse.error = "Invalid request format";
+            write(errorResponse);
+        }
+    }
 }
 
 void Connection::write(const Response &response)
