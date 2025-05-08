@@ -135,20 +135,20 @@ endif()
 # Создаение исполняемого файла
 if(OCTET_BUILD_APP)
     # Для подключения заголовков
-    set(OCTET_INCLUDE_CLI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/app")
+    set(OCTET_INCLUDE_CLI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/app/cli")
 
     # Указание исходников для CLI-бинарника
     set(OCTET_CLI_SOURCES
-        app/main.cpp
-        app/cli/commands.hpp
-        app/cli/commands.cpp
-        app/server/connection.hpp
-        app/server/connection.cpp
-        app/server/protocol.hpp
-        app/server/protocol.cpp
-        app/server/server.hpp
-        app/server/server.cpp
-        app/3rdparty/json.hpp
+        app/cli/main.cpp
+        app/cli/interactive/commands.hpp
+        app/cli/interactive/commands.cpp
+        app/cli/server/connection.hpp
+        app/cli/server/connection.cpp
+        app/cli/server/protocol.hpp
+        app/cli/server/protocol.cpp
+        app/cli/server/server.hpp
+        app/cli/server/server.cpp
+        app/cli/3rdparty/json.hpp
     )
 
     add_executable(octet ${OCTET_CLI_SOURCES})

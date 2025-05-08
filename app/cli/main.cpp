@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "cli/commands.hpp"
+#include "interactive/commands.hpp"
 #include "server/server.hpp"
 #include "storage/storage_manager.hpp"
 #include "logger.hpp"

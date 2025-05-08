@@ -1,7 +1,8 @@
-#include "cli/commands.hpp"
+#include "interactive/commands.hpp"
 
 #include <algorithm>
 #include <cassert>
+
 #include "utils/compiler.hpp"
 
 namespace {
