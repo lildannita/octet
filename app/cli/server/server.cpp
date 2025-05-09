@@ -1,9 +1,9 @@
 #include "server.hpp"
 
-#include <iostream>
 #include <boost/system/error_code.hpp>
 
 #include "utils/file_utils.hpp"
+#include "connection.hpp"
 #include "logger.hpp"
 
 namespace {

@@ -3,7 +3,6 @@
 #include <string>
 #include <optional>
 #include <vector>
-#include <cstdint>
 
 namespace octet::server {
 /**

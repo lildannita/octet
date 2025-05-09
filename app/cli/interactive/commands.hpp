@@ -1,14 +1,11 @@
 #pragma once
 
 #include <functional>
-#include <iostream>
-#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "storage/storage_manager.hpp"
-#include "logger.hpp"
 
 namespace octet::cli {
 /**

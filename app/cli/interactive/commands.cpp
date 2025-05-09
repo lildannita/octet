@@ -1,7 +1,7 @@
 #include "interactive/commands.hpp"
 
-#include <algorithm>
 #include <cassert>
+#include <iostream>
 
 #include "utils/compiler.hpp"
 

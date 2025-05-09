@@ -2,12 +2,10 @@
 
 #include <filesystem>
 #include <memory>
-#include <thread>
 #include <atomic>
 #include <boost/asio.hpp>
 
 #include "storage/storage_manager.hpp"
-#include "connection.hpp"
 
 namespace octet::server {
 /**
