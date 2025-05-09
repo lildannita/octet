@@ -50,23 +50,41 @@ func Load(configPath string) (*Config, error) {
 		HTTPAddr:   ":8080",
 	}
 
-	// Если указан путь к файлу конфигурации, загружаем из него
-	if configPath != "" {
-		if err := loadFromFile(configPath, config); err != nil {
+	var baseDir string
+	if len(configPath) != 0 {
+		// Используем абсолютные пути
+		absCfgPath, err := filepath.Abs(configPath)
+		if err != nil {
+			return nil, fmt.Errorf("не удалось получить абсолютный путь к файлу конфигурации: %w", err)
+		}
+		// Если указан путь к файлу конфигурации, загружаем из него
+		if err := loadFromFile(absCfgPath, config); err != nil {
 			return nil, err
 		}
+		baseDir = filepath.Dir(absCfgPath)
 	}
 
+	resolve := func(p string) string {
+		if len(p) == 0 || filepath.IsAbs(p) || len(baseDir) == 0 {
+			return p
+		}
+		return filepath.Clean(filepath.Join(baseDir, p))
+	}
+	config.StorageDir = resolve(config.StorageDir)
+	config.SocketPath = resolve(config.SocketPath)
+
 	// Если путь к octet задан при компиляции, то он будет в приоритете
-	if OctetPath != "" {
+	if len(OctetPath) != 0 {
 		config.OctetPath = OctetPath
+	} else {
+		config.OctetPath = resolve(config.OctetPath)
 	}
 
 	// Проверяем обязательные параметры
-	if config.StorageDir == "" {
+	if len(config.StorageDir) == 0 {
 		return nil, fmt.Errorf("путь к директории с хранилищем не указан")
 	}
-	if config.OctetPath == "" {
+	if len(config.OctetPath) == 0 {
 		return nil, fmt.Errorf("путь к исполняемому файлу octet не указан")
 	} else if _, err := os.Stat(config.OctetPath); err != nil {
 		return nil, fmt.Errorf("исполняемый файл octet не найден: %w", err)
