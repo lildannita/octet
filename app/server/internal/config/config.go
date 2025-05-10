@@ -46,7 +46,7 @@ func Load(configPath string) (*Config, error) {
 	config := &Config{
 		StorageDir: filepath.Join(os.TempDir(), "octet-storage"),
 		SocketPath: filepath.Join(os.TempDir(), "octet.sock"),
-		OctetPath:  "octet",
+		OctetPath:  "",
 		HTTPAddr:   ":8080",
 	}
 
@@ -73,11 +73,10 @@ func Load(configPath string) (*Config, error) {
 	config.StorageDir = resolve(config.StorageDir)
 	config.SocketPath = resolve(config.SocketPath)
 
-	// Если путь к octet задан при компиляции, то он будет в приоритете
-	if len(OctetPath) != 0 {
+	config.OctetPath = resolve(config.OctetPath)
+	// Если путь к octet не задан в конфиге, то используем путь, указанный при компиляции
+	if len(config.OctetPath) == 0 {
 		config.OctetPath = OctetPath
-	} else {
-		config.OctetPath = resolve(config.OctetPath)
 	}
 
 	// Проверяем обязательные параметры
