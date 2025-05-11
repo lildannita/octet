@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Экспортируемая переменная, которую можно задать при компиляции
@@ -42,17 +43,26 @@ func loadFromFile(path string, config *Config) error {
 
 // Load загружает конфигурацию из файла и командной строки
 func Load(configPath string) (*Config, error) {
+	var homePath string
+	var octetDir string
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		homePath = homeDir
+		octetDir = filepath.Join(homePath, "octet")
+	} else {
+		return nil, fmt.Errorf("не удалось получить путь к домашней директории: %w", err)
+	}
+
 	// Создаем дефолтный конфиг
 	config := &Config{
-		StorageDir: filepath.Join(os.TempDir(), "octet-storage"),
-		SocketPath: filepath.Join(os.TempDir(), "octet.sock"),
+		StorageDir: filepath.Join(octetDir, "storage"),
+		SocketPath: filepath.Join(octetDir, "octet.sock"),
 		OctetPath:  "",
 		HTTPAddr:   ":8080",
 	}
 
 	var baseDir string
 	if len(configPath) != 0 {
-		// Используем абсолютные пути
+		// Используем абсолютные пути относительно директории конфига
 		absCfgPath, err := filepath.Abs(configPath)
 		if err != nil {
 			return nil, fmt.Errorf("не удалось получить абсолютный путь к файлу конфигурации: %w", err)
@@ -68,7 +78,18 @@ func Load(configPath string) (*Config, error) {
 		if len(p) == 0 || filepath.IsAbs(p) || len(baseDir) == 0 {
 			return p
 		}
-		return filepath.Clean(filepath.Join(baseDir, p))
+		if strings.HasPrefix(p, "~") {
+			// Разрешаем путь содержащий домашнюю директорию
+			if len(p) > 2 {
+				return filepath.Join(homePath, p[2:])
+			} else {
+				return homePath
+			}
+		} else {
+			// Разрешаем путь, относительно директории, в которой лежит конфиг
+			return filepath.Clean(filepath.Join(baseDir, p))
+		}
+
 	}
 	config.StorageDir = resolve(config.StorageDir)
 	config.SocketPath = resolve(config.SocketPath)

@@ -1,6 +1,6 @@
 {
-    "storage_dir": "/tmp/octet/storage",
-    "socket_path": "/tmp/octet/octet.sock",
+    "storage_dir": "~/octet/storage",
+    "socket_path": "~/octet/octet.sock",
     "octet_path": "",
     "http_addr": ":8080",
     "max_clients": 10
