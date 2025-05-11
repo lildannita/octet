@@ -27,9 +27,6 @@ option(OCTET_BUILD_STATIC_LIB "Build static version of the library" OFF)
 option(OCTET_BUILD_APP "Build CLI executable" OFF)
 option(OCTET_BUILD_TESTS "Build tests" OFF)
 
-# TODO: При разработке CLI расскоментировать
-# option(OCTET_BUILD_APP "Build CLI executable" ON)
-
 # Определение платформы
 add_library(octet_platform INTERFACE)
 if(WIN32)
@@ -100,7 +97,6 @@ if(OCTET_BUILD_SHARED_LIB)
     set_target_properties(octet_shared PROPERTIES
         OUTPUT_NAME "${OCTET_BASENAME}"
         VERSION ${PROJECT_VERSION}
-        SOVERSION ${PROJECT_VERSION_MAJOR}
         EXPORT_NAME "shared"
     )
     target_link_libraries(octet_shared PRIVATE octet_platform)
