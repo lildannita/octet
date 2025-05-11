@@ -171,6 +171,15 @@ if(OCTET_BUILD_APP)
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
         COMPONENT applications
     )
+
+    # Для macOS нужно явно указывать, где искать динамические библиотеки
+    if(APPLE)
+        set(CMAKE_MACOSX_RPATH ON)
+        set_target_properties(octet PROPERTIES
+            INSTALL_RPATH_USE_LINK_PATH TRUE
+            INSTALL_RPATH "@executable_path/../lib;@loader_path/../lib"
+        )
+    endif()
 endif()
 
 # Добавление тестов

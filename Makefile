@@ -76,8 +76,7 @@ SHARED_COVERAGE_PATH := $(TEST_DIR)/tests/coverage/octet_coverage_shared_report/
 # ————————————————————————————————————— Phony targets —————————————————————————————————————
 .PHONY: all build rebuild rebuild-app build-cli build-app build-tests \
         build-coverage tests coverage-static coverage-shared coverage \
-        install uninstall clean testclean lint help
-# install-app uninstall-app
+        install uninstall install-app uninstall-app clean testclean lint help 
 
 # ————————————————————————————————————— Help —————————————————————————————————————
 help:
@@ -91,9 +90,9 @@ help:
 	@echo "  rebuild          : Clean and rebuild (library only)"
 	@echo "  rebuild-app      : Clean and rebuild application (CLI and Go server)"
 	@echo "  install          : Install C++ library to system"
-# @echo "  install-app      : Install C++ library, CLI application and Go server to system"
+	@echo "  install-app      : Install C++ library, CLI application and Go server to system"
 	@echo "  uninstall        : Uninstall C++ components from system"
-# @echo "  uninstall-app    : Uninstall all components (C++ and Go) from system"
+	@echo "  uninstall-app    : Uninstall all components (C++ and Go) from system"
 	@echo ""
 	@echo "Development targets:"
 	@echo "  tests            : Run all tests"
@@ -199,23 +198,22 @@ install: build
 	@echo "=== Installing octet library to '$(INSTALL_PREFIX)' ==="
 	@$(CMAKE) --build $(BUILD_DIR) --target install
 
-# TODO: решить проблему с поиском динамической библиотеки
-# install-app: build-app
-# 	@echo "=== Installing octet application to '$(INSTALL_PREFIX)' ==="
-# 	@$(CMAKE) --build $(BUILD_DIR) --target install
-# 	@echo "=== Installing Go server to '$(GO_INSTALL_PATH)' ==="
-# 	@cd $(GO_SERVER_SOURCE) && \
-# 	$(GO_ENV) $(GO) install -v \
-# 		-ldflags "-X 'github.com/lildannita/octet-server/internal/config.OctetPath=$(INSTALL_PREFIX)/bin/$(OCTET)'" \
-# 		$(GO_TARGET_PATH)
+install-app: build-app
+	@echo "=== Installing octet application to '$(INSTALL_PREFIX)' ==="
+	@$(CMAKE) --build $(BUILD_DIR) --target install
+	@echo "=== Installing Go server to '$(GO_INSTALL_PATH)' ==="
+	@cd $(GO_SERVER_SOURCE) && \
+	$(GO_ENV) $(GO) install -v \
+		-ldflags "-X 'github.com/lildannita/octet-server/internal/config.OctetPath=$(INSTALL_PREFIX)/bin/$(OCTET)'" \
+		$(GO_TARGET_PATH)
 
 uninstall:
 	@echo "=== Uninstalling from '$(INSTALL_PREFIX)' ==="
 	@$(CMAKE) -P $(BUILD_DIR)/octet-uninstall.cmake || true
 
-# uninstall-app: uninstall
-# 	@echo "=== Removing Go server ==="
-# 	@rm -f $(GO_INSTALL_PATH)/$(GO_BIN_NAME)
+uninstall-app: uninstall
+	@echo "=== Removing Go server ==="
+	@rm -f $(GO_INSTALL_PATH)/$(GO_BIN_NAME)
 
 # ————————————————————————————————————— Cleaning —————————————————————————————————————
 clean:
