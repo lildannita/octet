@@ -192,6 +192,22 @@ std::optional<std::filesystem::path> do_createFileBackup(const std::filesystem::
     LOG_INFO << "Успешно создана резервная копия: " << backupPath.string();
     return backupPath;
 }
+
+std::string pathToFilename(const std::filesystem::path &path)
+{
+    const auto rootName = path.root_name();
+    const auto rootDirectory = path.root_directory();
+    std::string filename;
+    for (const auto &part : path) {
+        // Пропускаем корневые элементы
+        if (part == rootName || part == rootDirectory)
+            continue;
+        if (!filename.empty())
+            filename += '_';
+        filename += part.string();
+    }
+    return filename;
+}
 } // namespace
 
 namespace octet::utils {
@@ -242,6 +258,23 @@ bool ensureDirectoryExists(const std::filesystem::path &dir, bool createIfMissin
     LOG_DEBUG << "Проверка директории: " << dir.string()
               << ", создавать если отсутствует: " << (createIfMissing ? "да" : "нет");
 
+    /* TODO:
+     * Блокировку директории нельзя делать так же, как мы делаем для других файлов,
+     * т.к. присутствует требование, чтобы для файлов директория была доступна для записи.
+     * Если бы мы делали блокировку для директории так же, как и для файлов, то нам нужно
+     * было бы создавать файл в ее родительской директории, которая может быть недоступна
+     * для записи. Поэтому сейчас мы преобразуем путь к директории в имя файла и создаем
+     * блокировку в стандартной временной директории. Это не идеальное решение, нужно
+     * будет придумать что-то другое.
+     */
+    const auto lockPath = std::filesystem::temp_directory_path() / pathToFilename(dir);
+    FileLockGuard lock(lockPath, LockMode::EXCLUSIVE);
+    if (!lock.isLocked()) {
+        LOG_ERROR << "Не удалось получить блокировку для создания директории: "
+                  << lockPath.string();
+        return false;
+    }
+
     std::error_code ec;
     if (std::filesystem::exists(dir, ec)) {
         assert(!ec);
@@ -265,12 +298,6 @@ bool ensureDirectoryExists(const std::filesystem::path &dir, bool createIfMissin
 
     if (!createIfMissing) {
         LOG_DEBUG << "Директория не существует и не будет создана: " << dir.string();
-        return false;
-    }
-
-    FileLockGuard lock(dir, LockMode::EXCLUSIVE);
-    if (!lock.isLocked()) {
-        LOG_ERROR << "Не удалось получить блокировку для создания директории: " << dir.string();
         return false;
     }
 
