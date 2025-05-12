@@ -12,7 +12,7 @@ BUILD_STATIC     ?= OFF
 INSTALL_PREFIX   ?= /usr/local
 
 # Path for packaging Docker image
-DOCKER_ARCHIVE	 ?= docker/octet-server.tar
+DOCKER_ARCHIVE	 ?= docker/octet-image.tar
 
 BUILD_DIR        := $(abspath build)
 TEST_DIR         := $(abspath build_test)
@@ -179,6 +179,7 @@ docker-image:
 docker-archive:
 	@echo "=== Archiving Docker image (octet-image) ==="
 	@docker save -o $(DOCKER_ARCHIVE) octet-image:latest
+	@echo "Path to archive with octet-image: $(DOCKER_ARCHIVE)"
 
 docker-run:
 	@echo "=== Running Docker containter ==="
