@@ -16,15 +16,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Подключаем модуль с переменными для стандартных путей установки
 include(GNUInstallDirs)
 
-
-# Поиск необходимых библиотек
-find_package(Threads REQUIRED)
-find_package(Boost REQUIRED CONFIG COMPONENTS system)
-
 # Опции сборки
 option(OCTET_BUILD_SHARED_LIB "Build shared version of the library" ON)
 option(OCTET_BUILD_STATIC_LIB "Build static version of the library" OFF)
 option(OCTET_BUILD_APP "Build CLI executable" OFF)
+option(OCTET_USE_STATIC_FOR_APP "Use static libraries for octet CLI" OFF)
 option(OCTET_BUILD_TESTS "Build tests" OFF)
 
 # Определение платформы
@@ -40,6 +36,21 @@ elseif(UNIX)
     target_compile_definitions(octet_platform INTERFACE OCTET_PLATFORM_LINUX OCTET_PLATFORM_UNIX OCTET_PLATFORM_SUPPORTED)
 else()
     message(FATAL_ERROR "Unsupported platform")
+endif()
+
+# Поиск необходимых библиотек
+find_package(Threads REQUIRED)
+if(OCTET_BUILD_APP)
+    find_package(Boost REQUIRED CONFIG COMPONENTS system)
+endif()
+
+if(OCTET_BUILD_APP AND OCTET_USE_STATIC_FOR_APP)
+    # Для использования статической версии Boost::system
+    set(Boost_USE_STATIC_LIBS ON)
+    # Собираем только статическую библиотеку octet
+    set(OCTET_BUILD_SHARED_LIB OFF CACHE BOOL "Force OFF shared lib as OCTET_USE_STATIC_FOR_APP=ON" FORCE)
+    set(OCTET_BUILD_STATIC_LIB ON CACHE BOOL "Force ON static lib as OCTET_USE_STATIC_FOR_APP=ON" FORCE)
+    set(OCTET_BUILD_TESTS OFF CACHE BOOL "Force OFF for tests build as OCTET_USE_STATIC_FOR_APP=ON" FORCE)
 endif()
 
 # Если включены тесты — обязательно собираем и статическую, и динамическую библиотеки
@@ -99,7 +110,10 @@ if(OCTET_BUILD_SHARED_LIB)
         VERSION ${PROJECT_VERSION}
         EXPORT_NAME "shared"
     )
-    target_link_libraries(octet_shared PRIVATE octet_platform)
+    target_link_libraries(octet_shared PRIVATE
+        octet_platform
+        Threads::Threads
+    )
     target_include_directories(octet_shared
         PUBLIC
             $<BUILD_INTERFACE:${OCTET_INCLUDE_DIR}>
@@ -120,7 +134,10 @@ if(OCTET_BUILD_STATIC_LIB)
         VERSION ${PROJECT_VERSION}
         EXPORT_NAME "static"
     )
-    target_link_libraries(octet_static PRIVATE octet_platform)
+    target_link_libraries(octet_static PRIVATE
+        octet_platform
+        Threads::Threads
+    )
     target_include_directories(octet_static
         PUBLIC
             $<BUILD_INTERFACE:${OCTET_INCLUDE_DIR}>
@@ -159,9 +176,17 @@ if(OCTET_BUILD_APP)
 
     # Динамическая библиотека в приоритете
     if(OCTET_BUILD_SHARED_LIB)
-        target_link_libraries(octet PRIVATE octet_shared Boost::system)
+        target_link_libraries(octet PRIVATE
+            octet_shared
+            Boost::system
+            Threads::Threads
+        )
     elseif(OCTET_BUILD_STATIC_LIB)
-        target_link_libraries(octet PRIVATE octet_static Boost::system)
+        target_link_libraries(octet PRIVATE
+            octet_static
+            Boost::system
+            Threads::Threads
+        )
     else()
         message(FATAL_ERROR "Internal error! Can't build application without library.")
     endif()
