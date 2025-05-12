@@ -1,0 +1,7 @@
+{
+    "storage_dir": "/storage",
+    "socket_path": "/home/octet/octet.sock",
+    "octet_path": "/usr/local/bin/octet",
+    "http_addr": ":8080",
+    "max_clients": 20
+}

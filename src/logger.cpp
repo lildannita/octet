@@ -6,7 +6,6 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <sstream>
 
 #if defined(OCTET_PLATFORM_WINDOWS)
 #include <errno.h>
@@ -111,6 +110,7 @@ Logger::Logger()
     : enabled_(false)
     , consoleOutput_(false)
     , colorOutput_(false)
+    , formatMessage_(false)
     , logFilePath_(std::nullopt)
     , minimumLevel_(LogLevel::INFO)
 {
@@ -121,7 +121,7 @@ Logger::~Logger()
 }
 
 void Logger::enable(bool logToConsole, std::optional<std::filesystem::path> logFile,
-                    LogLevel minLevel, bool useColors)
+                    LogLevel minLevel, bool useColors, bool formatMessage)
 {
     std::ostringstream configMsg;
     bool needColorWarning = false;
@@ -133,6 +133,7 @@ void Logger::enable(bool logToConsole, std::optional<std::filesystem::path> logF
         consoleOutput_ = logToConsole;
         logFilePath_ = logFile;
         minimumLevel_ = minLevel;
+        formatMessage_ = formatMessage;
 
         // Устанавливаем использование цветов, если это запрошено и поддерживается
         if (useColors) {
@@ -174,7 +175,7 @@ void Logger::enable(bool logToConsole, std::optional<std::filesystem::path> logF
 void Logger::disable()
 {
     std::lock_guard<std::mutex> lock(logMutex_);
-    log(LogLevel::INFO, "Логирование отключено", __FILE__, __LINE__);
+    log(LogLevel::INFO, "Логирование отключено", __FILE__, __LINE__, false);
     enabled_ = false;
 }
 
@@ -191,7 +192,7 @@ void Logger::setMinLogLevel(LogLevel level)
     if (enabled_) {
         std::ostringstream oss;
         oss << "Минимальный уровень логирования установлен на " << levelToString(level);
-        log(LogLevel::INFO, oss.str(), __FILE__, __LINE__);
+        log(LogLevel::INFO, oss.str(), __FILE__, __LINE__, false);
     }
 }
 
@@ -210,13 +211,13 @@ void Logger::setUseColors(bool useColors)
         log(LogLevel::WARNING,
             "Включена поддержка цветного вывода, однако текущая консоль не поддерживает ANSI "
             "цвета",
-            __FILE__, __LINE__);
+            __FILE__, __LINE__, false);
     }
     colorOutput_ = useColors && isColorSupported;
 
     log(LogLevel::INFO,
         "Использование цветного вывода " + std::string(colorOutput_ ? "включено" : "отключено"),
-        __FILE__, __LINE__);
+        __FILE__, __LINE__, false);
 }
 
 bool Logger::getUseColors() const
@@ -224,17 +225,31 @@ bool Logger::getUseColors() const
     return colorOutput_;
 }
 
-void Logger::log(LogLevel level, const std::string &message, const std::string_view file, int line)
+void Logger::setFormatMessage(bool formatMessage)
+{
+    formatMessage_ = formatMessage;
+}
+
+bool Logger::getFormatMessage() const
+{
+    return formatMessage_;
+}
+
+void Logger::log(LogLevel level, const std::string &message, const std::string_view file, int line,
+                 bool useLock)
 {
     // Проверяем, включено ли логирование и подходит ли уровень сообщения
     if (!enabled_ || level < minimumLevel_) {
         return;
     }
 
-    std::lock_guard<std::mutex> lock(logMutex_);
+    std::unique_lock<std::mutex> lock(logMutex_, std::defer_lock);
+    if (useLock) {
+        lock.lock();
+    }
 
-    // Форматируем сообщение
-    auto formattedMessage = formatLogMessage(level, message, file, line);
+    // Форматируем сообщение (если нужно)
+    auto formattedMessage = formatMessage_ ? formatLogMessage(level, message, file, line) : message;
 
     // Выводим в консоль, если необходимо
     if (consoleOutput_) {
@@ -262,6 +277,8 @@ std::string Logger::levelToString(LogLevel level)
         return "ERROR";
     case LogLevel::CRITICAL:
         return "CRITICAL";
+    case LogLevel::IMPORTANT:
+        return "IMPORTANT";
     default:
         UNREACHABLE("Unsopported LogLevel");
     }
@@ -273,7 +290,7 @@ std::string Logger::formatLogMessage(LogLevel level, const std::string &message,
     std::ostringstream oss;
 
     // Формат для файла: [ВРЕМЯ] [УРОВЕНЬ] [ФАЙЛ:СТРОКА] Сообщение
-    // Для консоли добавляем префикс OCTET
+    // Для консоли добавляем префикс `OCTET` (если включен)
     oss << "[" << getCurrentTimeFormatted() << "] "
         << "[" << levelToString(level) << "] ";
 
@@ -307,7 +324,7 @@ bool Logger::writeToFile(const std::string &formattedMessage)
 void Logger::writeToConsole(const std::string &formattedMessage, LogLevel level)
 {
     // Префикс для консольного вывода
-    const std::string prefix = "OCTET: ";
+    const std::string prefix = formatMessage_ ? "OCTET: " : "";
 
     // Используем цветовой вывод в зависимости от уровня логирования и настроек
     if (colorOutput_) {
@@ -331,6 +348,9 @@ void Logger::writeToConsole(const std::string &formattedMessage, LogLevel level)
             break;
         case LogLevel::CRITICAL:
             colorCode = ConsoleColor::MAGENTA;
+            break;
+        case LogLevel::IMPORTANT:
+            // Используем стандартный цвет
             break;
         default:
             UNREACHABLE("Unsupported LogLevel");

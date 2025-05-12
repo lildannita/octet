@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.17 FATAL_ERROR)
 
 # Инициализация проекта
 project(octet
-    VERSION 0.1.0
+    VERSION 0.2.0
     DESCRIPTION "Octet library for UTF-8 string storage"
     LANGUAGES CXX
 )
@@ -16,19 +16,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Подключаем модуль с переменными для стандартных путей установки
 include(GNUInstallDirs)
 
-
-# Поиск необходимых библиотек
-find_package(Threads REQUIRED)
-# TODO: При разработке CLI расскоментировать
-# find_package(Boost REQUIRED COMPONENTS system)
-
 # Опции сборки
 option(OCTET_BUILD_SHARED_LIB "Build shared version of the library" ON)
 option(OCTET_BUILD_STATIC_LIB "Build static version of the library" OFF)
+option(OCTET_BUILD_APP "Build CLI executable" OFF)
+option(OCTET_USE_STATIC_FOR_APP "Use static libraries for octet CLI" OFF)
 option(OCTET_BUILD_TESTS "Build tests" OFF)
-
-# TODO: При разработке CLI расскоментировать
-# option(OCTET_BUILD_APP "Build CLI executable" ON)
 
 # Определение платформы
 add_library(octet_platform INTERFACE)
@@ -43,6 +36,21 @@ elseif(UNIX)
     target_compile_definitions(octet_platform INTERFACE OCTET_PLATFORM_LINUX OCTET_PLATFORM_UNIX OCTET_PLATFORM_SUPPORTED)
 else()
     message(FATAL_ERROR "Unsupported platform")
+endif()
+
+# Поиск необходимых библиотек
+find_package(Threads REQUIRED)
+if(OCTET_BUILD_APP)
+    find_package(Boost REQUIRED CONFIG COMPONENTS system)
+endif()
+
+if(OCTET_BUILD_APP AND OCTET_USE_STATIC_FOR_APP)
+    # Для использования статической версии Boost::system
+    set(Boost_USE_STATIC_LIBS ON)
+    # Собираем только статическую библиотеку octet
+    set(OCTET_BUILD_SHARED_LIB OFF CACHE BOOL "Force OFF shared lib as OCTET_USE_STATIC_FOR_APP=ON" FORCE)
+    set(OCTET_BUILD_STATIC_LIB ON CACHE BOOL "Force ON static lib as OCTET_USE_STATIC_FOR_APP=ON" FORCE)
+    set(OCTET_BUILD_TESTS OFF CACHE BOOL "Force OFF for tests build as OCTET_USE_STATIC_FOR_APP=ON" FORCE)
 endif()
 
 # Если включены тесты — обязательно собираем и статическую, и динамическую библиотеки
@@ -100,10 +108,12 @@ if(OCTET_BUILD_SHARED_LIB)
     set_target_properties(octet_shared PROPERTIES
         OUTPUT_NAME "${OCTET_BASENAME}"
         VERSION ${PROJECT_VERSION}
-        SOVERSION ${PROJECT_VERSION_MAJOR}
         EXPORT_NAME "shared"
     )
-    target_link_libraries(octet_shared PRIVATE octet_platform)
+    target_link_libraries(octet_shared PRIVATE
+        octet_platform
+        Threads::Threads
+    )
     target_include_directories(octet_shared
         PUBLIC
             $<BUILD_INTERFACE:${OCTET_INCLUDE_DIR}>
@@ -124,7 +134,10 @@ if(OCTET_BUILD_STATIC_LIB)
         VERSION ${PROJECT_VERSION}
         EXPORT_NAME "static"
     )
-    target_link_libraries(octet_static PRIVATE octet_platform)
+    target_link_libraries(octet_static PRIVATE
+        octet_platform
+        Threads::Threads
+    )
     target_include_directories(octet_static
         PUBLIC
             $<BUILD_INTERFACE:${OCTET_INCLUDE_DIR}>
@@ -132,22 +145,67 @@ if(OCTET_BUILD_STATIC_LIB)
     )
 endif()
 
-# TODO: При разработке CLI расскоментировать
-# # Создаение исполняемого файла
-# if(OCTET_BUILD_APP)
-#     add_executable(octet app/main.cpp)
-#     set_target_properties(octet PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
-#     target_include_directories(octet PRIVATE ${OCTET_INCLUDE_DIR})
+# Создаение исполняемого файла
+if(OCTET_BUILD_APP)
+    # Для подключения заголовков
+    set(OCTET_INCLUDE_CLI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/app/cli")
 
-#     # Динамическая библиотека в приоритете
-#     if(OCTET_BUILD_SHARED_LIB)
-#         target_link_libraries(octet PRIVATE octet_shared)
-#     elseif(OCTET_BUILD_STATIC_LIB)
-#         target_link_libraries(octet PRIVATE octet_static)
-#     else()
-#         message(FATAL_ERROR "Internal error! Can't build application without library.")
-#     endif()
-# endif()
+    # Указание исходников для CLI-бинарника
+    set(OCTET_CLI_SOURCES
+        app/cli/main.cpp
+        app/cli/interactive/commands.hpp
+        app/cli/interactive/commands.cpp
+        app/cli/server/connection.hpp
+        app/cli/server/connection.cpp
+        app/cli/server/protocol.hpp
+        app/cli/server/protocol.cpp
+        app/cli/server/server.hpp
+        app/cli/server/server.cpp
+        app/cli/3rdparty/json.hpp
+    )
+
+    add_executable(octet ${OCTET_CLI_SOURCES})
+    set_target_properties(octet PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin
+    )
+    target_include_directories(octet
+        PRIVATE
+            ${OCTET_INCLUDE_DIR}
+            ${OCTET_INCLUDE_CLI_DIR}
+    )
+
+    # Динамическая библиотека в приоритете
+    if(OCTET_BUILD_SHARED_LIB)
+        target_link_libraries(octet PRIVATE
+            octet_shared
+            Boost::system
+            Threads::Threads
+        )
+    elseif(OCTET_BUILD_STATIC_LIB)
+        target_link_libraries(octet PRIVATE
+            octet_static
+            Boost::system
+            Threads::Threads
+        )
+    else()
+        message(FATAL_ERROR "Internal error! Can't build application without library.")
+    endif()
+
+    # Установка исполняемого файла в систему
+    install(TARGETS octet
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        COMPONENT applications
+    )
+
+    # Для macOS нужно явно указывать, где искать динамические библиотеки
+    if(APPLE)
+        set(CMAKE_MACOSX_RPATH ON)
+        set_target_properties(octet PROPERTIES
+            INSTALL_RPATH_USE_LINK_PATH TRUE
+            INSTALL_RPATH "@executable_path/../lib;@loader_path/../lib"
+        )
+    endif()
+endif()
 
 # Добавление тестов
 if(OCTET_BUILD_TESTS)
