@@ -46,3 +46,6 @@ tests/*.log
 !.clang-format
 !.gitignore
 !.gitattributes
+
+# Для монтируемых директорий и для архива образа
+docker/octet*

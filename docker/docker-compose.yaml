@@ -1,0 +1,25 @@
+---
+services:
+  octet-server:
+    image: octet-image:latest
+    container_name: octet-server
+    restart: unless-stopped
+    ports:
+      # Проброс порта API сервера на хост-машину
+      - "8080:8080"
+    volumes:
+      # Монтирование директории для персистентного хранения данных
+      - ./octet-storage:/storage
+    healthcheck:
+      # Команда проверки здоровья сервера
+      test: ["CMD", "curl", "-s", "-f", "http://localhost:8080/health"]
+      # Интервал между проверками здоровья
+      interval: 30s
+      # Таймаут на выполнение проверки
+      timeout: 10s
+      # Количество повторных попыток в случае неудачи
+      retries: 3
+      # Время задержки перед первой проверкой
+      start_period: 30s
+    # Задержка при остановке контейнера для корректного завершения работы
+    stop_grace_period: 10s

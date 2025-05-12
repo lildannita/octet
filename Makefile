@@ -11,6 +11,9 @@ BUILD_STATIC     ?= OFF
 # Install config
 INSTALL_PREFIX   ?= /usr/local
 
+# Path for packaging Docker image
+DOCKER_ARCHIVE	 ?= docker/octet-server.tar
+
 BUILD_DIR        := $(abspath build)
 TEST_DIR         := $(abspath build_test)
 CMAKE            := cmake
@@ -42,10 +45,13 @@ CMAKE_FLAGS := \
   	-DCMAKE_INSTALL_PREFIX=$(INSTALL_PREFIX)
 
 # CMake configure for build/install
-CMAKE_BUILD_FLAGS := \
+CMAKE_COMMON_BUILD_FLAGS := \
 	$(CMAKE_FLAGS) \
 	-B $(BUILD_DIR) \
-	-DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) \
+	-DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE)
+
+CMAKE_BUILD_FLAGS := \
+	$(CMAKE_COMMON_BUILD_FLAGS) \
 	-DOCTET_BUILD_SHARED_LIB=$(BUILD_SHARED) \
 	-DOCTET_BUILD_STATIC_LIB=$(BUILD_STATIC)
 
@@ -76,6 +82,7 @@ SHARED_COVERAGE_PATH := $(TEST_DIR)/tests/coverage/octet_coverage_shared_report/
 # ————————————————————————————————————— Phony targets —————————————————————————————————————
 .PHONY: all build rebuild rebuild-app build-cli build-app build-tests \
         build-coverage tests coverage-static coverage-shared coverage \
+		docker-build docker-image docker-archive docker-run docker-stop \
         install uninstall install-app uninstall-app clean testclean lint help 
 
 # ————————————————————————————————————— Help —————————————————————————————————————
@@ -94,6 +101,13 @@ help:
 	@echo "  uninstall        : Uninstall C++ components from system (may require sudo)"
 	@echo "  uninstall-app    : Uninstall all components (C++ and Go) from system (may require sudo)"
 	@echo ""
+	@echo "Docker targets (for server usage):"
+	@echo "  docker-build     : Build C++ CLI and Go server for Docker (with static linking)"
+	@echo "  docker-image 	  :	Build Docker image"
+	@echo "  docker-archive   :	Arhive Docker image using DOCKER_ARCHIVE path"
+	@echo "  docker-run 	  :	Run Docker container (with docker/docker-compose.yaml configuration)"
+	@echo "  docker-stop 	  :	Stop Docker container"
+	@echo ""
 	@echo "Development targets:"
 	@echo "  tests            : Run all tests"
 	@echo "  coverage         : Generate code coverage reports"
@@ -107,6 +121,7 @@ help:
 	@echo "  BUILD_SHARED     : Build shared library (default: $(BUILD_SHARED))"
 	@echo "  BUILD_STATIC     : Build static library (default: $(BUILD_STATIC))"
 	@echo "  INSTALL_PREFIX   : Installation prefix (default: $(INSTALL_PREFIX))"
+	@echo "  DOCKER_ARCHIVE   : Path for packaging Docker image (default: $(DOCKER_ARCHIVE))"
 
 # ————————————————————————————————————— Default —————————————————————————————————————
 all: build-app
@@ -124,12 +139,14 @@ build-cli:
 	$(CMAKE) $(CMAKE_BUILD_FLAGS) -DOCTET_BUILD_APP=ON
 	$(CMAKE) --build $(BUILD_DIR)
 
-build-app: build-cli
+build-server:
 	@echo "=== Building Go server ==="
 	@cd $(GO_SERVER_SOURCE) && \
 	$(GO_ENV) $(GO) build $(GO_BUILD_FLAGS) \
 		-ldflags "-X 'github.com/lildannita/octet-server/internal/config.OctetPath=$(OCTET_BIN)'" \
 		$(GO_TARGET_PATH)
+
+build-app: build-cli build-server
 
 rebuild: clean build
 
@@ -146,6 +163,30 @@ build-coverage: testclean
 	@mkdir -p $(TEST_DIR)
 	$(CMAKE) $(CMAKE_TEST_FLAGS) -DOCTET_COVERAGE=ON
 	$(CMAKE) --build $(TEST_DIR)
+
+# ————————————————————————————————————— Docker —————————————————————————————————————
+docker-build:
+	@echo "=== Configuring ($(CMAKE_BUILD_TYPE)) & building CLI application for Docker ==="
+	@mkdir -p $(BUILD_DIR)
+	$(CMAKE) $(CMAKE_COMMON_BUILD_FLAGS) -DOCTET_BUILD_APP=ON -DOCTET_USE_STATIC_FOR_APP=ON
+	$(CMAKE) --build $(BUILD_DIR)
+	$(MAKE) build-server
+
+docker-image:
+	@echo "=== Building Docker image (octet-image) ==="
+	@docker build -f docker/Dockerfile -t octet-image .
+
+docker-archive:
+	@echo "=== Archiving Docker image (octet-image) ==="
+	@docker save -o $(DOCKER_ARCHIVE) octet-image:latest
+
+docker-run:
+	@echo "=== Running Docker containter ==="
+	@cd docker && docker compose up -d
+
+docker-stop:
+	@echo "=== Running Docker containter ==="
+	@cd docker && docker compose down
 
 # ————————————————————————————————————— Development —————————————————————————————————————
 lint:
