@@ -69,6 +69,10 @@ RUN mkdir -p /storage \
 COPY --from=builder /octet-source/build/bin/octet /usr/local/bin/
 COPY --from=builder /octet-source/build/bin/octet-server /usr/local/bin/
 
+# Копируем файл entrypoint.sh
+COPY docker/entrypoint.sh /home/octet/entrypoint.sh
+RUN chown octet:octet /home/octet/entrypoint.sh
+
 # Копируем файл конфигурации
 COPY docker/config.json /home/octet/config.json
 RUN chown octet:octet /home/octet/config.json
@@ -84,4 +88,4 @@ USER octet
 WORKDIR /home/octet
 
 # Запускаем Go-сервер с указанным конфигурационным файлом
-ENTRYPOINT ["octet-server", "--config=/home/octet/config.json"]
+ENTRYPOINT ["bash", "/home/octet/entrypoint.sh"]

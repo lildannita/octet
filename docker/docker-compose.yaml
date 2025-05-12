@@ -10,6 +10,9 @@ services:
     volumes:
       # Монтирование директории для персистентного хранения данных
       - ./octet-storage:/storage
+    environment:
+      - HOST_UID=${UID:-1000}
+      - HOST_GID=${GID:-1000}
     healthcheck:
       # Команда проверки здоровья сервера
       test: ["CMD", "curl", "-s", "-f", "http://localhost:8080/health"]
