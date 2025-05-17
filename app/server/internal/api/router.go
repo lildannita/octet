@@ -7,7 +7,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	_ "github.com/lildannita/octet-server/docs"
 	"github.com/lildannita/octet-server/internal/service"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"go.uber.org/zap"
 )
 
@@ -67,6 +69,11 @@ func NewRouter(config RouterConfig) http.Handler {
 			r.Delete("/{uuid}", h.Remove)
 		})
 	})
+
+	// OpenAPI документация
+	r.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
 
 	return r
 }

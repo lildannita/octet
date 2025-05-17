@@ -1,0 +1,160 @@
+basePath: /
+definitions:
+  api.DataHeader:
+    properties:
+      data:
+        type: string
+    type: object
+  api.ErrorHeader:
+    properties:
+      error:
+        type: string
+    type: object
+  api.HealthCheckResponse:
+    properties:
+      status:
+        type: string
+      timestamp:
+        type: string
+    type: object
+  api.UuidHeader:
+    properties:
+      uuid:
+        type: string
+    type: object
+info:
+  contact:
+    name: Goldyshev Danil
+    url: https://github.com/lildannita
+  description: Сервис хранения строк UTF-8 с идентификаторами UUID
+  license:
+    name: GPL 3.0
+    url: https://www.gnu.org/licenses/gpl-3.0.html
+  title: octet API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      description: Проверка, работает ли сервис и менеджер хранилища
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.HealthCheckResponse'
+      summary: Проверка работоспособности
+      tags:
+      - health
+  /octet/v1:
+    post:
+      consumes:
+      - application/json
+      description: Сохранение строки UTF-8 и получение UUID
+      parameters:
+      - description: Строка для сохранения
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/api.DataHeader'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.UuidHeader'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorHeader'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorHeader'
+      summary: Добавление новой строки
+      tags:
+      - strings
+  /octet/v1/{uuid}:
+    delete:
+      description: Удаление строки по её UUID
+      parameters:
+      - description: UUID строки
+        in: path
+        name: uuid
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorHeader'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorHeader'
+      summary: Удаление строки
+      tags:
+      - strings
+    get:
+      description: Извлечение строки из хранилища по её UUID
+      parameters:
+      - description: UUID строки
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.DataHeader'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorHeader'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorHeader'
+      summary: Получение строки по UUID
+      tags:
+      - strings
+    put:
+      consumes:
+      - application/json
+      description: Обновление строки по её UUID
+      parameters:
+      - description: UUID строки
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: Новое значение строки
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/api.DataHeader'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorHeader'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorHeader'
+      summary: Обновление существующей строки
+      tags:
+      - strings
+swagger: "2.0"

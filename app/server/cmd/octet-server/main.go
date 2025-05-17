@@ -17,6 +17,15 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// @title octet API
+// @version 1.0
+// @description Сервис хранения строк UTF-8 с идентификаторами UUID
+// @termsOfService
+// @contact.name Goldyshev Danil
+// @contact.url https://github.com/lildannita
+// @license.name GPL 3.0
+// @license.url https://www.gnu.org/licenses/gpl-3.0.html
+// @BasePath /
 func main() {
 	// Парсинг аргументов командной строки
 	configPath := flag.String("config", "", "Путь к файлу конфигурации")
