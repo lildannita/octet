@@ -37,7 +37,13 @@ type Handler struct {
 	logger     *zap.Logger
 }
 
-// Проверка работоспособности сервера
+// HealthCheck godoc
+// @Summary Проверка работоспособности
+// @Description Проверка, работает ли сервис и менеджер хранилища
+// @Tags health
+// @Produce json
+// @Success 200 {object} HealthCheckResponse
+// @Router /health [get]
 func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	// Получаем клиент из пула
 	client, err := h.clientPool.GetClient()
@@ -61,7 +67,17 @@ func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Добавление строки в хранилище (POST [JSON] -> UuidHeader/ErrorHeader)
+// Insert godoc
+// @Summary Добавление новой строки
+// @Description Сохранение строки UTF-8 и получение UUID
+// @Tags strings
+// @Accept json
+// @Produce json
+// @Param data body DataHeader true "Строка для сохранения"
+// @Success 201 {object} UuidHeader
+// @Failure 400 {object} ErrorHeader
+// @Failure 500 {object} ErrorHeader
+// @Router /octet/v1 [post]
 func (h *Handler) Insert(w http.ResponseWriter, r *http.Request) {
 	// Разбираем запрос
 	var insertReq DataHeader
@@ -97,7 +113,16 @@ func (h *Handler) Insert(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusCreated, UuidHeader{Uuid: uuid})
 }
 
-// Получение строки из хранилища (GET [URL] -> DataHeader/ErrorHeader)
+// Get godoc
+// @Summary Получение строки по UUID
+// @Description Извлечение строки из хранилища по её UUID
+// @Tags strings
+// @Produce json
+// @Param uuid path string true "UUID строки"
+// @Success 200 {object} DataHeader
+// @Failure 400 {object} ErrorHeader
+// @Failure 500 {object} ErrorHeader
+// @Router /octet/v1/{uuid} [get]
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	// Получаем UUID из URL
 	uuid := chi.URLParam(r, "uuid")
@@ -126,7 +151,18 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, DataHeader{Data: data})
 }
 
-// Обновление строки в хранилище (PUT [URL+JSON] -> 204/ErrorHeader)
+// Update godoc
+// @Summary Обновление существующей строки
+// @Description Обновление строки по её UUID
+// @Tags strings
+// @Accept json
+// @Produce json
+// @Param uuid path string true "UUID строки"
+// @Param data body DataHeader true "Новое значение строки"
+// @Success 204
+// @Failure 400 {object} ErrorHeader
+// @Failure 500 {object} ErrorHeader
+// @Router /octet/v1/{uuid} [put]
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	// Получаем UUID из URL
 	uuid := chi.URLParam(r, "uuid")
@@ -168,7 +204,15 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Удаление строки из хранилища (DELETE [URL] -> 204/ErrorHeader)
+// Remove godoc
+// @Summary Удаление строки
+// @Description Удаление строки по её UUID
+// @Tags strings
+// @Param uuid path string true "UUID строки"
+// @Success 204
+// @Failure 400 {object} ErrorHeader
+// @Failure 500 {object} ErrorHeader
+// @Router /octet/v1/{uuid} [delete]
 func (h *Handler) Remove(w http.ResponseWriter, r *http.Request) {
 	// Получаем UUID из URL
 	uuid := chi.URLParam(r, "uuid")

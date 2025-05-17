@@ -25,10 +25,12 @@ option(OCTET_BUILD_TESTS "Build tests" OFF)
 
 # Определение платформы
 add_library(octet_platform INTERFACE)
-if(WIN32)
-    message(STATUS "Platform: Windows")
-    target_compile_definitions(octet_platform INTERFACE OCTET_PLATFORM_WINDOWS OCTET_PLATFORM_SUPPORTED)
-elseif(APPLE)
+# TODO: включить поддержку Windows после того, как библиотека будет нормально протестирована
+# if(WIN32)
+#     message(STATUS "Platform: Windows")
+#     target_compile_definitions(octet_platform INTERFACE OCTET_PLATFORM_WINDOWS OCTET_PLATFORM_SUPPORTED)
+# elseif(APPLE)
+if(APPLE)
     message(STATUS "Platform: macOS")
     target_compile_definitions(octet_platform INTERFACE OCTET_PLATFORM_MACOS OCTET_PLATFORM_UNIX OCTET_PLATFORM_SUPPORTED)
 elseif(UNIX)
@@ -197,12 +199,20 @@ if(OCTET_BUILD_APP)
         COMPONENT applications
     )
 
-    # Для macOS нужно явно указывать, где искать динамические библиотеки
+    # Указываем, где искать динамическую библиотеку
+    set_target_properties(octet PROPERTIES
+        INSTALL_RPATH_USE_LINK_PATH TRUE
+    )
     if(APPLE)
+        # macOS использует специальные переменные для относительных путей
         set(CMAKE_MACOSX_RPATH ON)
         set_target_properties(octet PROPERTIES
-            INSTALL_RPATH_USE_LINK_PATH TRUE
             INSTALL_RPATH "@executable_path/../lib;@loader_path/../lib"
+        )
+    elseif(UNIX)
+        # Linux использует $ORIGIN для относительных путей
+        set_target_properties(octet PROPERTIES
+            INSTALL_RPATH "$ORIGIN/../lib;/usr/local/lib"
         )
     endif()
 endif()

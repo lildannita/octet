@@ -28,7 +28,11 @@ GO_TARGET_PATH 	 := $(GO_SERVER_SOURCE)/cmd/$(GO_BIN_NAME)
 GO_BIN_PATH      := $(BUILD_DIR)/bin/$(GO_BIN_NAME)
 GO_BUILD_FLAGS   := -v -o $(GO_BIN_PATH)
 GO_ENV           := CGO_ENABLED=0
-GO_INSTALL_PATH  := $(shell go env GOPATH)/bin
+
+# As `install` targets runs from sudo, trying to get correct path to `go` directory
+REAL_USER := $(shell if [ -n "$$SUDO_USER" ]; then echo $$SUDO_USER; else echo $$USER; fi)
+USER_HOME := $(shell if [ -n "$$SUDO_USER" ]; then getent passwd $$SUDO_USER | cut -d: -f6; else echo $$HOME; fi)
+GO_INSTALL_PATH := $(USER_HOME)/go/bin
 
 # Binary paths
 BUILD_BIN_DIR    := $(BUILD_DIR)/bin
@@ -83,7 +87,8 @@ SHARED_COVERAGE_PATH := $(TEST_DIR)/tests/coverage/octet_coverage_shared_report/
 .PHONY: all build rebuild rebuild-app build-cli build-app build-tests \
         build-coverage tests coverage-static coverage-shared coverage \
 		docker-build docker-image docker-archive docker-run docker-stop \
-        install uninstall install-app uninstall-app clean testclean lint help 
+        install uninstall install-app uninstall-app clean testclean lint \
+		openapi help
 
 # ————————————————————————————————————— Help —————————————————————————————————————
 help:
@@ -112,6 +117,7 @@ help:
 	@echo "  tests            : Run all tests"
 	@echo "  coverage         : Generate code coverage reports"
 	@echo "  lint             : Run linters on code"
+	@echo "  openapi          : Update OpenAPI documentation"
 	@echo ""
 	@echo "Cleaning targets:"
 	@echo "  clean            : Remove build directory and Go binaries"
@@ -208,6 +214,9 @@ lint:
 		echo "go fmt not found, skipping Go linting"; \
 	fi
 
+openapi:
+	@cd $(GO_SERVER_SOURCE) && $(GO_INSTALL_PATH)/swag init -g cmd/octet-server/main.go
+
 # ————————————————————————————————————— Run & Test —————————————————————————————————————
 tests: build-tests
 	@echo "=== Running CTest ==="
@@ -245,7 +254,7 @@ install-app: build-app
 	@$(CMAKE) --build $(BUILD_DIR) --target install
 	@echo "=== Installing Go server to '$(GO_INSTALL_PATH)' ==="
 	@cd $(GO_SERVER_SOURCE) && \
-	$(GO_ENV) $(GO) install -v \
+	$(GO_ENV) GOBIN=$(GO_INSTALL_PATH) $(GO) install -v \
 		-ldflags "-X 'github.com/lildannita/octet-server/internal/config.OctetPath=$(INSTALL_PREFIX)/bin/$(OCTET)'" \
 		$(GO_TARGET_PATH)
 
