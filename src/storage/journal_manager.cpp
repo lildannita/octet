@@ -177,7 +177,7 @@ JournalEntry::JournalEntry(OperationType type, std::string uuid, std::string dat
 std::string JournalEntry::serialize() const
 {
     std::ostringstream oss;
-    // Формат: TYPE|GUID|TIMESTAMP|DATA
+    // Формат: TYPE|UUID|TIMESTAMP|DATA
     // TODO: нужно решить, что все-таки делать с UUID:
     // 1)  Разрешить любые UUID и экранировать их
     // 2)  Разрешить любые UUID и не экранировать их, а выкидывать исключение
